@@ -1,0 +1,100 @@
+from __future__ import annotations
+from typing import Any
+from django.db import transaction
+from rest_framework import serializers
+from apps.exercises.serializers import ExerciseSerializer
+from .models import WorkoutTemplate, WorkoutSession, SetLog
+
+
+class WorkoutTemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WorkoutTemplate
+        fields = (
+            "id", "name", "description",
+            "is_deleted", "deleted_at",
+            "created_at", "updated_at",
+        )
+        read_only_fields = ("id", "is_deleted", "deleted_at", "created_at", "updated_at")
+
+
+class SetLogSerializer(serializers.ModelSerializer):
+    exercise_detail = ExerciseSerializer(source="exercise", read_only=True)
+    exercise = serializers.UUIDField(write_only=True)
+
+    class Meta:
+        model = SetLog
+        fields = (
+            "id",
+            "exercise",
+            "exercise_detail",
+            "set_number",
+            "weight_kg",
+            "reps",
+            "rpe",
+            "created_at",
+        )
+        read_only_fields = ("id", "created_at")
+
+
+class WorkoutSessionSerializer(serializers.ModelSerializer):
+    """
+    POST body example:
+    {
+        "template": "uuid-or-null",
+        "started_at": "2025-05-15T08:00:00Z",
+        "finished_at": "2025-05-15T09:00:00Z",
+        "set_logs": [
+            {"exercise": "uuid", "set_number": 1, "weight_kg": "80.00", "reps": 8, "rpe": "7.5"}
+        ]
+    }
+    """
+    set_logs = SetLogSerializer(many=True, required=False)
+    duration_minutes = serializers.ReadOnlyField()
+
+    class Meta:
+        model = WorkoutSession
+        fields = (
+            "id",
+            "template",
+            "started_at",
+            "finished_at",
+            "notes",
+            "duration_minutes",
+            "set_logs",
+            "created_at",
+        )
+        read_only_fields = ("id", "created_at")
+
+    @transaction.atomic
+    def create(self, validated_data: dict[str, Any]) -> WorkoutSession:
+        set_logs_data: list[dict[str, Any]] = validated_data.pop("set_logs", [])
+        user = self.context["request"].user
+        session = WorkoutSession.objects.create(user=user, **validated_data)
+        self._create_set_logs(session, set_logs_data)
+        return session
+
+    @transaction.atomic
+    def update(
+        self, instance: WorkoutSession, validated_data: dict[str, Any]
+    ) -> WorkoutSession:
+        set_logs_data: list[dict[str, Any]] | None = validated_data.pop("set_logs", None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if set_logs_data is not None:
+            instance.set_logs.all().delete()
+            self._create_set_logs(instance, set_logs_data)
+        return instance
+
+    @staticmethod
+    def _create_set_logs(
+        session: WorkoutSession, set_logs_data: list[dict[str, Any]]
+    ) -> None:
+        from apps.exercises.models import Exercise
+
+        set_log_objects: list[SetLog] = []
+        for data in set_logs_data:
+            exercise_id = data.pop("exercise")
+            exercise = Exercise.objects.get(pk=exercise_id)
+            set_log_objects.append(SetLog(session=session, exercise=exercise, **data))
+        SetLog.objects.bulk_create(set_log_objects)
