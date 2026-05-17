@@ -3,7 +3,12 @@ from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
 from .models import WorkoutTemplate, WorkoutSession
-from .serializers import WorkoutTemplateSerializer, WorkoutSessionSerializer
+from .serializers import (
+    WorkoutTemplateSerializer,
+    WorkoutSessionSerializer,
+    SessionSummaryResponseSerializer,
+)
+from .services import compute_session_summary
 
 
 class WorkoutTemplateViewSet(viewsets.ModelViewSet):
@@ -41,3 +46,17 @@ class WorkoutSessionViewSet(viewsets.ModelViewSet):
             .prefetch_related("set_logs__exercise")
             .select_related("template")
         )
+
+    @action(detail=True, methods=["get"], url_path="summary", url_name="summary")
+    def summary(self, request: Request, pk=None) -> Response:
+        """
+        GET /api/workouts/sessions/{id}/summary/
+
+        Returns aggregated metrics for the session: total volume, sets,
+        per-exercise breakdown with top set and new-PR detection, plus
+        the list of muscle groups trained.
+        """
+        session = self.get_object()
+        payload = compute_session_summary(session)
+        serializer = SessionSummaryResponseSerializer(payload)
+        return Response(serializer.data)
