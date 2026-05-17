@@ -163,3 +163,31 @@ class ProgressionResponseSerializer(serializers.Serializer):
     personal_record = ProgressionPRSerializer(allow_null=True)
     trend = ProgressionTrendPointSerializer(many=True)
     suggestion = ProgressionSuggestionSerializer(allow_null=True)
+
+
+class SessionSummaryTopSetSerializer(serializers.Serializer):
+    weight_kg = serializers.DecimalField(max_digits=6, decimal_places=2, allow_null=True)
+    reps = serializers.IntegerField()
+    rpe = serializers.DecimalField(max_digits=3, decimal_places=1, allow_null=True)
+
+
+class SessionSummaryExerciseSerializer(serializers.Serializer):
+    exercise_id = serializers.UUIDField()
+    exercise_name = serializers.CharField()
+    muscle_group = serializers.CharField()
+    sets_count = serializers.IntegerField()
+    volume_kg = serializers.DecimalField(max_digits=10, decimal_places=2)
+    top_set = SessionSummaryTopSetSerializer()
+    is_new_pr = serializers.BooleanField()
+
+
+class SessionSummaryResponseSerializer(serializers.Serializer):
+    session_id = serializers.UUIDField()
+    started_at = serializers.DateTimeField()
+    finished_at = serializers.DateTimeField(allow_null=True)
+    duration_minutes = serializers.FloatField(allow_null=True)
+    total_volume_kg = serializers.DecimalField(max_digits=10, decimal_places=2)
+    total_sets = serializers.IntegerField()
+    exercises = SessionSummaryExerciseSerializer(many=True)
+    muscle_groups_trained = serializers.ListField(child=serializers.CharField())
+    new_prs_count = serializers.IntegerField()

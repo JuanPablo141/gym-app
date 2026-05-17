@@ -1,7 +1,8 @@
 from __future__ import annotations
 from decimal import Decimal
 from typing import Any
-from .models import SetLog
+from django.db.models import Max
+from .models import SetLog, WorkoutSession
 
 WEIGHT_INCREMENT_KG = Decimal("2.5")
 RPE_LOW_THRESHOLD = Decimal("7.0")
@@ -68,4 +69,83 @@ def suggest_next_load(
         "weight_kg": weight,
         "reps": reps,
         "rationale": "Mantenha o peso e tente bater os reps anteriores.",
+    }
+
+
+def compute_session_summary(session: WorkoutSession) -> dict[str, Any]:
+    """
+    Aggregates metrics for a completed workout session: total volume, sets,
+    per-exercise breakdown (with top set and new-PR detection), and the list
+    of muscle groups trained.
+
+    Assumes session.set_logs is prefetched with related exercise.
+    """
+    grouped: dict[Any, dict[str, Any]] = {}
+    for set_log in session.set_logs.all():
+        bucket = grouped.setdefault(
+            set_log.exercise_id,
+            {"exercise": set_log.exercise, "sets": []},
+        )
+        bucket["sets"].append(set_log)
+
+    exercises_out: list[dict[str, Any]] = []
+    total_volume = Decimal("0")
+    total_sets = 0
+    muscle_groups: set[str] = set()
+    new_prs_count = 0
+
+    for bucket in grouped.values():
+        exercise = bucket["exercise"]
+        sets: list[SetLog] = bucket["sets"]
+
+        volume_kg = sum(
+            (s.weight_kg * s.reps for s in sets if s.weight_kg is not None),
+            Decimal("0"),
+        )
+        top_set = max(sets, key=lambda s: (s.weight_kg or Decimal("0"), s.reps))
+
+        is_new_pr = False
+        if top_set.weight_kg is not None:
+            prev_max = (
+                SetLog.objects.filter(
+                    session__user=session.user,
+                    exercise=exercise,
+                    weight_kg__isnull=False,
+                )
+                .exclude(session=session)
+                .aggregate(Max("weight_kg"))["weight_kg__max"]
+            )
+            is_new_pr = prev_max is None or top_set.weight_kg > prev_max
+
+        if is_new_pr:
+            new_prs_count += 1
+
+        muscle_groups.add(exercise.muscle_group)
+        total_volume += volume_kg
+        total_sets += len(sets)
+
+        exercises_out.append({
+            "exercise_id": exercise.id,
+            "exercise_name": exercise.name,
+            "muscle_group": exercise.muscle_group,
+            "sets_count": len(sets),
+            "volume_kg": volume_kg,
+            "top_set": {
+                "weight_kg": top_set.weight_kg,
+                "reps": top_set.reps,
+                "rpe": top_set.rpe,
+            },
+            "is_new_pr": is_new_pr,
+        })
+
+    return {
+        "session_id": session.id,
+        "started_at": session.started_at,
+        "finished_at": session.finished_at,
+        "duration_minutes": session.duration_minutes,
+        "total_volume_kg": total_volume,
+        "total_sets": total_sets,
+        "exercises": exercises_out,
+        "muscle_groups_trained": sorted(muscle_groups),
+        "new_prs_count": new_prs_count,
     }
