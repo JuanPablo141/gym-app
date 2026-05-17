@@ -60,6 +60,7 @@ class WorkoutSession(models.Model):
     started_at = models.DateTimeField()
     finished_at = models.DateTimeField(null=True, blank=True)
     notes = models.TextField(blank=True, default="")
+    route_data = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

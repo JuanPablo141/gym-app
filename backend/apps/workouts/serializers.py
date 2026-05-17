@@ -61,9 +61,26 @@ class WorkoutSessionSerializer(serializers.ModelSerializer):
             "notes",
             "duration_minutes",
             "set_logs",
+            "route_data",
             "created_at",
         )
         read_only_fields = ("id", "created_at")
+
+    def validate_route_data(self, value):
+        if value is None:
+            return value
+        if not isinstance(value, list):
+            raise serializers.ValidationError("route_data deve ser uma lista.")
+        for i, point in enumerate(value):
+            if not isinstance(point, dict):
+                raise serializers.ValidationError(f"Ponto {i} deve ser um objeto.")
+            lat = point.get("lat")
+            lng = point.get("lng")
+            if not isinstance(lat, (int, float)) or isinstance(lat, bool) or not -90 <= lat <= 90:
+                raise serializers.ValidationError(f"Ponto {i}: lat inválido.")
+            if not isinstance(lng, (int, float)) or isinstance(lng, bool) or not -180 <= lng <= 180:
+                raise serializers.ValidationError(f"Ponto {i}: lng inválido.")
+        return value
 
     @transaction.atomic
     def create(self, validated_data: dict[str, Any]) -> WorkoutSession:
