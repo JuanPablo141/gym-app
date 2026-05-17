@@ -128,3 +128,38 @@ class ExerciseHistorySessionSerializer(serializers.ModelSerializer):
             if s.weight_kg is not None:
                 total += float(s.weight_kg) * s.reps
         return round(total, 2)
+
+
+class ProgressionTopSetSerializer(serializers.Serializer):
+    session_id = serializers.UUIDField()
+    date = serializers.DateTimeField()
+    weight_kg = serializers.DecimalField(max_digits=6, decimal_places=2, allow_null=True)
+    reps = serializers.IntegerField()
+    rpe = serializers.DecimalField(max_digits=3, decimal_places=1, allow_null=True)
+
+
+class ProgressionPRSerializer(serializers.Serializer):
+    weight_kg = serializers.DecimalField(max_digits=6, decimal_places=2)
+    reps = serializers.IntegerField()
+    date = serializers.DateTimeField()
+
+
+class ProgressionTrendPointSerializer(serializers.Serializer):
+    date = serializers.DateTimeField()
+    top_weight_kg = serializers.DecimalField(max_digits=6, decimal_places=2, allow_null=True)
+    top_reps = serializers.IntegerField()
+    top_rpe = serializers.DecimalField(max_digits=3, decimal_places=1, allow_null=True)
+
+
+class ProgressionSuggestionSerializer(serializers.Serializer):
+    weight_kg = serializers.DecimalField(max_digits=6, decimal_places=2, allow_null=True)
+    reps = serializers.IntegerField()
+    rationale = serializers.CharField()
+
+
+class ProgressionResponseSerializer(serializers.Serializer):
+    exercise_id = serializers.UUIDField()
+    last_top_set = ProgressionTopSetSerializer(allow_null=True)
+    personal_record = ProgressionPRSerializer(allow_null=True)
+    trend = ProgressionTrendPointSerializer(many=True)
+    suggestion = ProgressionSuggestionSerializer(allow_null=True)
