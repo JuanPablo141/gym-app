@@ -1,6 +1,10 @@
-from rest_framework import generics, permissions
-from .models import User
-from .serializers import UserRegistrationSerializer, UserProfileSerializer
+from rest_framework import generics, permissions, viewsets
+from .models import User, ProgressPhoto
+from .serializers import (
+    UserRegistrationSerializer,
+    UserProfileSerializer,
+    ProgressPhotoSerializer,
+)
 
 
 class RegisterView(generics.CreateAPIView):
@@ -15,3 +19,14 @@ class MeView(generics.RetrieveUpdateAPIView):
 
     def get_object(self) -> User:
         return self.request.user  # type: ignore[return-value]
+
+
+class ProgressPhotoViewSet(viewsets.ModelViewSet):
+    serializer_class = ProgressPhotoSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return ProgressPhoto.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer: ProgressPhotoSerializer) -> None:
+        serializer.save(user=self.request.user)

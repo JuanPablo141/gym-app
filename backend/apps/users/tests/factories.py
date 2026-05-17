@@ -1,6 +1,6 @@
 import factory
-from factory.django import DjangoModelFactory
-from apps.users.models import User
+from factory.django import DjangoModelFactory, ImageField
+from apps.users.models import User, ProgressPhoto
 
 
 class UserFactory(DjangoModelFactory):
@@ -17,3 +17,12 @@ class UserFactory(DjangoModelFactory):
         password = kwargs.pop("password", "testpass123")
         user = model_class.objects.create_user(password=password, **kwargs)
         return user
+
+
+class ProgressPhotoFactory(DjangoModelFactory):
+    class Meta:
+        model = ProgressPhoto
+
+    user = factory.SubFactory(UserFactory)
+    image = ImageField(color="blue")
+    notes = ""
