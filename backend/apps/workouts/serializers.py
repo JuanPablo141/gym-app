@@ -98,3 +98,33 @@ class WorkoutSessionSerializer(serializers.ModelSerializer):
             exercise = Exercise.objects.get(pk=exercise_id)
             set_log_objects.append(SetLog(session=session, exercise=exercise, **data))
         SetLog.objects.bulk_create(set_log_objects)
+
+
+class HistorySetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SetLog
+        fields = ("set_number", "weight_kg", "reps", "rpe")
+
+
+class ExerciseHistorySessionSerializer(serializers.ModelSerializer):
+    sets = HistorySetSerializer(source="exercise_sets", many=True, read_only=True)
+    total_volume_kg = serializers.SerializerMethodField()
+
+    class Meta:
+        model = WorkoutSession
+        fields = (
+            "id",
+            "started_at",
+            "finished_at",
+            "notes",
+            "sets",
+            "total_volume_kg",
+        )
+
+    def get_total_volume_kg(self, obj: WorkoutSession) -> float:
+        """Soma de (weight_kg * reps) — métrica clássica de volume de treino."""
+        total = 0.0
+        for s in obj.exercise_sets:  # type: ignore[attr-defined]
+            if s.weight_kg is not None:
+                total += float(s.weight_kg) * s.reps
+        return round(total, 2)
