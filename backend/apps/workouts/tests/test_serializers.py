@@ -89,3 +89,52 @@ def test_update_session_replaces_set_logs(user):
     session.refresh_from_db()
     assert session.set_logs.count() == 1
     assert session.set_logs.first().exercise == squat
+
+
+# ---------------------------------------------------------------------------
+# route_data — validação leve
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_create_session_with_route_data_persists(user):
+    payload = {
+        "started_at": timezone.now().isoformat(),
+        "route_data": [
+            {"lat": -23.5505, "lng": -46.6333, "timestamp": "2026-05-17T08:00:00Z"},
+            {"lat": -23.5510, "lng": -46.6340},
+        ],
+    }
+    serializer = WorkoutSessionSerializer(data=payload, context=_context_for(user))
+    assert serializer.is_valid(), serializer.errors
+
+    session = serializer.save()
+
+    session.refresh_from_db()
+    assert session.route_data is not None
+    assert len(session.route_data) == 2
+    assert session.route_data[0]["lat"] == -23.5505
+
+
+@pytest.mark.django_db
+def test_route_data_rejects_invalid_lat(user):
+    payload = {
+        "started_at": timezone.now().isoformat(),
+        "route_data": [{"lat": 91, "lng": 0}],
+    }
+    serializer = WorkoutSessionSerializer(data=payload, context=_context_for(user))
+
+    assert not serializer.is_valid()
+    assert "route_data" in serializer.errors
+
+
+@pytest.mark.django_db
+def test_route_data_rejects_non_list(user):
+    payload = {
+        "started_at": timezone.now().isoformat(),
+        "route_data": {"foo": "bar"},
+    }
+    serializer = WorkoutSessionSerializer(data=payload, context=_context_for(user))
+
+    assert not serializer.is_valid()
+    assert "route_data" in serializer.errors
