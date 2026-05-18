@@ -1,44 +1,167 @@
-import { StyleSheet, Text, View } from "react-native";
+import { useEffect } from "react";
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import Button from "../components/Button";
+import Card from "../components/Card";
+import HistorySessionItem from "../components/HistorySessionItem";
+import ProgressionSummary from "../components/ProgressionSummary";
+import QueryState from "../components/QueryState";
+import { MUSCLE_GROUP_LABELS } from "../src/services/constants";
+import {
+  useExerciseDetail,
+  useExerciseHistory,
+  useExerciseProgression,
+} from "../src/services/hooks";
+import { colors, spacing } from "../src/services/theme";
 
-const DetailScreen = ({ route }) => {
-  const exerciseId = route?.params?.exerciseId ?? "(sem id)";
+const DetailScreen = ({ navigation, route }) => {
+  const { exerciseId, exerciseName } = route.params ?? {};
+
+  const detail = useExerciseDetail(exerciseId);
+  const progression = useExerciseProgression(exerciseId);
+  const history = useExerciseHistory(exerciseId);
+
+  useEffect(() => {
+    if (exerciseName) {
+      navigation.setOptions({ title: exerciseName });
+    }
+  }, [exerciseName, navigation]);
+
+  const handleStartWorkout = () => {
+    Alert.alert(
+      "Em breve",
+      "O fluxo 'Iniciar Treino' será implementado na próxima feature (sensores).",
+    );
+  };
+
+  // O header só precisa do detail. Sections (progression/history) carregam por conta própria.
+  if (detail.isLoading || detail.error) {
+    return (
+      <QueryState
+        isLoading={detail.isLoading}
+        error={detail.error}
+        onRetry={detail.refetch}
+        errorText="Não foi possível carregar o exercício."
+      />
+    );
+  }
+
+  const exercise = detail.data;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Detalhes do Exercício</Text>
-      <Text style={styles.subtitle}>Placeholder</Text>
-      <Text style={styles.idLabel}>exerciseId recebido por params:</Text>
-      <Text style={styles.idValue}>{exerciseId}</Text>
-    </View>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Card style={styles.headerCard}>
+        <Text style={styles.groupBadge}>
+          {MUSCLE_GROUP_LABELS[exercise.muscle_group] ?? exercise.muscle_group}
+        </Text>
+        <Text style={styles.title}>{exercise.name}</Text>
+        {exercise.description ? (
+          <Text style={styles.description}>{exercise.description}</Text>
+        ) : (
+          <Text style={styles.descriptionEmpty}>Sem instruções cadastradas.</Text>
+        )}
+      </Card>
+
+      <View style={styles.startButtonWrapper}>
+        <Button title="Iniciar Treino" onPress={handleStartWorkout} />
+      </View>
+
+      <Text style={styles.sectionTitle}>Sugestão de Carga</Text>
+      {progression.isLoading ? (
+        <View style={styles.inlineLoading}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      ) : (
+        <ProgressionSummary progression={progression.data} />
+      )}
+
+      <Text style={styles.sectionTitle}>Histórico</Text>
+      {history.isLoading && (
+        <View style={styles.inlineLoading}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      )}
+      {!history.isLoading && history.error && (
+        <Card style={styles.emptyHistory}>
+          <Text style={styles.emptyHistoryText}>
+            Não foi possível carregar o histórico.
+          </Text>
+        </Card>
+      )}
+      {!history.isLoading &&
+        !history.error &&
+        (history.data && history.data.length > 0 ? (
+          history.data.map((session) => (
+            <HistorySessionItem key={session.id} session={session} />
+          ))
+        ) : (
+          <Card style={styles.emptyHistory}>
+            <Text style={styles.emptyHistoryText}>
+              Nenhuma sessão registrada ainda.
+            </Text>
+          </Card>
+        ))}
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f7fa",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
+    backgroundColor: colors.bg,
+  },
+  content: {
+    paddingBottom: spacing.xl + 8,
+  },
+  headerCard: {
+    marginTop: spacing.md,
+  },
+  groupBadge: {
+    fontSize: 11,
+    color: colors.primary,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    marginBottom: spacing.xs,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "700",
-    marginBottom: 8,
+    color: colors.text,
+    marginBottom: spacing.sm,
   },
-  subtitle: {
+  description: {
     fontSize: 14,
-    color: "#666",
-    marginBottom: 24,
+    color: "#4b5563",
+    lineHeight: 20,
   },
-  idLabel: {
-    fontSize: 12,
-    color: "#999",
+  descriptionEmpty: {
+    fontSize: 13,
+    color: "#9ca3af",
+    fontStyle: "italic",
   },
-  idValue: {
+  startButtonWrapper: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.md,
+  },
+  sectionTitle: {
     fontSize: 14,
-    fontFamily: "monospace",
-    marginTop: 4,
+    fontWeight: "700",
+    color: colors.textLabel,
+    textTransform: "uppercase",
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.lg + 4,
+    marginBottom: spacing.xs,
+  },
+  inlineLoading: {
+    paddingVertical: spacing.lg,
+    alignItems: "center",
+  },
+  emptyHistory: {
+    padding: spacing.xl,
+    alignItems: "center",
+  },
+  emptyHistoryText: {
+    fontSize: 13,
+    color: colors.textSubtle,
   },
 });
 
