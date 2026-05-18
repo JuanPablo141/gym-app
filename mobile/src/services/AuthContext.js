@@ -1,7 +1,7 @@
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
-import * as SecureStore from "expo-secure-store";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import api, { setOnAuthFailure } from "./api";
 import { SECURE_STORE_KEYS } from "./constants";
+import { deleteItem, getItem, setItem } from "./secureStorage";
 
 const AuthContext = createContext(null);
 
@@ -10,8 +10,8 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   const clearTokens = useCallback(async () => {
-    await SecureStore.deleteItemAsync(SECURE_STORE_KEYS.ACCESS);
-    await SecureStore.deleteItemAsync(SECURE_STORE_KEYS.REFRESH);
+    await deleteItem(SECURE_STORE_KEYS.ACCESS);
+    await deleteItem(SECURE_STORE_KEYS.REFRESH);
     setUser(null);
   }, []);
 
@@ -25,8 +25,8 @@ export const AuthProvider = ({ children }) => {
     async (email, password) => {
       const response = await api.post("/auth/token/", { email, password });
       const { access, refresh } = response.data;
-      await SecureStore.setItemAsync(SECURE_STORE_KEYS.ACCESS, access);
-      await SecureStore.setItemAsync(SECURE_STORE_KEYS.REFRESH, refresh);
+      await setItem(SECURE_STORE_KEYS.ACCESS, access);
+      await setItem(SECURE_STORE_KEYS.REFRESH, refresh);
       await fetchMe();
     },
     [fetchMe]
@@ -45,16 +45,15 @@ export const AuthProvider = ({ children }) => {
   }, [clearTokens]);
 
   useEffect(() => {
-    setOnAuthFailure(() => {
-      clearTokens();
-    });
+    setOnAuthFailure(() => clearTokens());
+    return () => setOnAuthFailure(null);
   }, [clearTokens]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const refresh = await SecureStore.getItemAsync(SECURE_STORE_KEYS.REFRESH);
+        const refresh = await getItem(SECURE_STORE_KEYS.REFRESH);
         if (refresh) {
           await fetchMe();
         }
@@ -69,14 +68,17 @@ export const AuthProvider = ({ children }) => {
     };
   }, [fetchMe, clearTokens]);
 
-  const value = {
-    user,
-    isAuthenticated: user !== null,
-    isLoading,
-    login,
-    register,
-    logout,
-  };
+  const value = useMemo(
+    () => ({
+      user,
+      isAuthenticated: user !== null,
+      isLoading,
+      login,
+      register,
+      logout,
+    }),
+    [user, isLoading, login, register, logout]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

@@ -1,47 +1,70 @@
-import { StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect } from "react";
+import { FlatList, StyleSheet } from "react-native";
+import ExerciseListItem from "../components/ExerciseListItem";
+import QueryState from "../components/QueryState";
+import { MUSCLE_GROUP_LABELS } from "../src/services/constants";
+import { useExercises } from "../src/services/hooks";
+import { colors } from "../src/services/theme";
 
-const ListScreen = ({ navigation }) => {
+const ListScreen = ({ navigation, route }) => {
+  const muscleGroup = route?.params?.muscleGroup;
+  const { data, isLoading, error, refetch } = useExercises({ muscleGroup });
+
+  useEffect(() => {
+    navigation.setOptions({
+      title: muscleGroup
+        ? MUSCLE_GROUP_LABELS[muscleGroup] ?? muscleGroup
+        : "Todos os Exercícios",
+    });
+  }, [muscleGroup, navigation]);
+
+  const handlePress = useCallback(
+    (exercise) => {
+      navigation.navigate("Detail", {
+        exerciseId: exercise.id,
+        exerciseName: exercise.name,
+      });
+    },
+    [navigation]
+  );
+
+  const renderItem = useCallback(
+    ({ item }) => (
+      <ExerciseListItem exercise={item} onPress={() => handlePress(item)} />
+    ),
+    [handlePress]
+  );
+
+  const isEmpty = !data || data.length === 0;
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Lista de Exercícios</Text>
-      <Text style={styles.subtitle}>
-        Placeholder — FlatList consumindo /api/exercises/ virá aqui
-      </Text>
-      <Text
-        style={styles.link}
-        onPress={() =>
-          navigation.navigate("Detail", { exerciseId: "exemplo-uuid-123" })
-        }
-      >
-        Testar navegação para Detalhe →
-      </Text>
-    </View>
+    <QueryState
+      isLoading={isLoading}
+      error={error}
+      onRetry={refetch}
+      isEmpty={isEmpty}
+      errorText="Não foi possível carregar os exercícios."
+      emptyText="Nenhum exercício encontrado."
+    >
+      <FlatList
+        style={styles.list}
+        data={data}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        initialNumToRender={10}
+        contentContainerStyle={styles.listContent}
+      />
+    </QueryState>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  list: {
     flex: 1,
-    backgroundColor: "#f5f7fa",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
+    backgroundColor: colors.bg,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: "700",
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
-    marginBottom: 16,
-  },
-  link: {
-    color: "#1f6feb",
-    fontSize: 16,
-    fontWeight: "600",
+  listContent: {
+    paddingVertical: 8,
   },
 });
 

@@ -1,6 +1,6 @@
 import axios from "axios";
-import * as SecureStore from "expo-secure-store";
 import { API_BASE_URL, SECURE_STORE_KEYS } from "./constants";
+import { getItem, setItem } from "./secureStorage";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -14,7 +14,7 @@ export const setOnAuthFailure = (cb) => {
 
 api.interceptors.request.use(async (config) => {
   if (!config.headers.Authorization) {
-    const access = await SecureStore.getItemAsync(SECURE_STORE_KEYS.ACCESS);
+    const access = await getItem(SECURE_STORE_KEYS.ACCESS);
     if (access) {
       config.headers.Authorization = `Bearer ${access}`;
     }
@@ -25,16 +25,16 @@ api.interceptors.request.use(async (config) => {
 let refreshPromise = null;
 
 const refreshAccessToken = async () => {
-  const refresh = await SecureStore.getItemAsync(SECURE_STORE_KEYS.REFRESH);
+  const refresh = await getItem(SECURE_STORE_KEYS.REFRESH);
   if (!refresh) throw new Error("No refresh token");
 
   const response = await axios.post(`${API_BASE_URL}/auth/token/refresh/`, {
     refresh,
   });
   const { access, refresh: newRefresh } = response.data;
-  await SecureStore.setItemAsync(SECURE_STORE_KEYS.ACCESS, access);
+  await setItem(SECURE_STORE_KEYS.ACCESS, access);
   if (newRefresh) {
-    await SecureStore.setItemAsync(SECURE_STORE_KEYS.REFRESH, newRefresh);
+    await setItem(SECURE_STORE_KEYS.REFRESH, newRefresh);
   }
   return access;
 };
