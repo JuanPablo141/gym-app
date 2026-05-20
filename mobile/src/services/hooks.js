@@ -70,6 +70,22 @@ export const useProgressPhotos = () => {
   return useFetch(async () => fetchAll(`/users/me/progress-photos/`), []);
 };
 
+export const createWorkoutSession = async (payload) => {
+  const response = await api.post("/workouts/sessions/", payload);
+  return response.data;
+};
+
+export const uploadProgressPhoto = async ({ uri, takenAt, notes }) => {
+  const form = new FormData();
+  form.append("image", { uri, type: "image/jpeg", name: "photo.jpg" });
+  if (takenAt) form.append("taken_at", takenAt);
+  if (notes) form.append("notes", notes);
+  const response = await api.post("/users/me/progress-photos/", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return response.data;
+};
+
 export const useMuscleGroupCounts = () => {
   return useFetch(async () => {
     const results = await Promise.all(
