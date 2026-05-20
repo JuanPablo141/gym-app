@@ -1,6 +1,7 @@
 import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, View } from "react-native";
 import Button from "../components/Button";
 import Card from "../components/Card";
+import PhotoPicker from "../components/PhotoPicker";
 import ProgressPhotoThumbnail from "../components/ProgressPhotoThumbnail";
 import { useAuth } from "../src/services/AuthContext";
 import { useProgressPhotos } from "../src/services/hooks";
@@ -9,7 +10,7 @@ import { colors, spacing } from "../src/services/theme";
 
 const ProfileScreen = () => {
   const { user, logout } = useAuth();
-  const { data: photos, isLoading, error } = useProgressPhotos();
+  const { data: photos, isLoading, error, refetch } = useProgressPhotos();
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -29,6 +30,8 @@ const ProfileScreen = () => {
       </Card>
 
       <Text style={styles.sectionTitle}>Fotos de Progresso</Text>
+
+      <PhotoPicker onUploaded={refetch} />
 
       {isLoading && (
         <View style={styles.photosLoading}>

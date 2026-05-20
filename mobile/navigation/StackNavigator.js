@@ -1,6 +1,7 @@
 import { createStackNavigator } from "@react-navigation/stack";
 import ListScreen from "../screens/ListScreen";
 import DetailScreen from "../screens/DetailScreen";
+import WorkoutScreen from "../screens/WorkoutScreen";
 
 const Stack = createStackNavigator();
 
@@ -22,6 +23,11 @@ const StackNavigator = () => {
         name="Detail"
         component={DetailScreen}
         options={{ title: "Detalhes" }}
+      />
+      <Stack.Screen
+        name="Workout"
+        component={WorkoutScreen}
+        options={{ title: "Treino em andamento" }}
       />
     </Stack.Navigator>
   );

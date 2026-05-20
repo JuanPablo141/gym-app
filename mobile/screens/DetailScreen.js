@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import HistorySessionItem from "../components/HistorySessionItem";
@@ -27,10 +27,7 @@ const DetailScreen = ({ navigation, route }) => {
   }, [exerciseName, navigation]);
 
   const handleStartWorkout = () => {
-    Alert.alert(
-      "Em breve",
-      "O fluxo 'Iniciar Treino' será implementado na próxima feature (sensores).",
-    );
+    navigation.navigate("Workout", { exerciseId, exerciseName });
   };
 
   // O header só precisa do detail. Sections (progression/history) carregam por conta própria.
