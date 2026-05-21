@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import api from "./api";
 import { MUSCLE_GROUPS } from "./constants";
+import { getLocalPythonWeekday } from "./format";
 
 const useFetch = (fetcher, deps) => {
   const fetcherRef = useRef(fetcher);
@@ -93,6 +94,29 @@ export const updateTemplate = async (id, payload) => {
 
 export const deleteTemplate = async (id) => {
   await api.delete(`/workouts/templates/${id}/`);
+};
+
+export const useScheduledToday = () => {
+  return useFetch(async () => {
+    const dow = getLocalPythonWeekday();
+    const response = await api.get(
+      `/workouts/scheduled-workouts/?day_of_week=${dow}`
+    );
+    return response.data.results;
+  }, []);
+};
+
+export const useScheduledWeek = () => {
+  return useFetch(async () => fetchAll(`/workouts/scheduled-workouts/`), []);
+};
+
+export const createSchedule = async (payload) => {
+  const response = await api.post("/workouts/scheduled-workouts/", payload);
+  return response.data;
+};
+
+export const deleteSchedule = async (id) => {
+  await api.delete(`/workouts/scheduled-workouts/${id}/`);
 };
 
 export const createWorkoutSession = async (payload) => {
