@@ -70,6 +70,31 @@ export const useProgressPhotos = () => {
   return useFetch(async () => fetchAll(`/users/me/progress-photos/`), []);
 };
 
+export const useTemplates = () => {
+  return useFetch(async () => fetchAll(`/workouts/templates/`), []);
+};
+
+export const useTemplateDetail = (id) => {
+  return useFetch(async () => {
+    const response = await api.get(`/workouts/templates/${id}/`);
+    return response.data;
+  }, [id]);
+};
+
+export const createTemplate = async (payload) => {
+  const response = await api.post("/workouts/templates/", payload);
+  return response.data;
+};
+
+export const updateTemplate = async (id, payload) => {
+  const response = await api.put(`/workouts/templates/${id}/`, payload);
+  return response.data;
+};
+
+export const deleteTemplate = async (id) => {
+  await api.delete(`/workouts/templates/${id}/`);
+};
+
 export const createWorkoutSession = async (payload) => {
   const response = await api.post("/workouts/sessions/", payload);
   return response.data;
