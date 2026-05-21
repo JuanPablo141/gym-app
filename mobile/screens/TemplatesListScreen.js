@@ -23,12 +23,16 @@ const TemplatesListScreen = ({ navigation }) => {
     [navigation]
   );
 
-  const handleStart = useCallback(() => {
-    Alert.alert(
-      "Em breve",
-      "O fluxo guiado de treino vem na próxima feature."
-    );
-  }, []);
+  const handleStart = useCallback(
+    (template) => {
+      if (!template.exercises || template.exercises.length === 0) {
+        Alert.alert("Treino vazio", "Adicione exercícios antes de iniciar.");
+        return;
+      }
+      navigation.navigate("GuidedWorkout", { templateId: template.id });
+    },
+    [navigation]
+  );
 
   const handleLongPress = useCallback(
     (template) => {
@@ -57,7 +61,7 @@ const TemplatesListScreen = ({ navigation }) => {
         template={item}
         onPress={() => handleEdit(item)}
         onLongPress={() => handleLongPress(item)}
-        onStart={handleStart}
+        onStart={() => handleStart(item)}
         onEdit={() => handleEdit(item)}
       />
     ),
