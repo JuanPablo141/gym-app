@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import HomeScreen from "../screens/HomeScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import StackNavigator from "./StackNavigator";
+import TemplatesStackNavigator from "./TemplatesStackNavigator";
 
 const Tab = createBottomTabNavigator();
 
@@ -12,6 +13,8 @@ const iconFor = (routeName) => {
       return "home-outline";
     case "Exercises":
       return "barbell-outline";
+    case "Templates":
+      return "list-outline";
     case "Profile":
       return "person-outline";
     default:
@@ -42,6 +45,11 @@ const BottomTabNavigator = () => {
         name="Exercises"
         component={StackNavigator}
         options={{ title: "Exercícios", headerShown: false }}
+      />
+      <Tab.Screen
+        name="Templates"
+        component={TemplatesStackNavigator}
+        options={{ title: "Treinos", headerShown: false }}
       />
       <Tab.Screen
         name="Profile"
