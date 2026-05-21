@@ -4,9 +4,16 @@ import pytest
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.test import APIRequestFactory
-from apps.workouts.serializers import WorkoutSessionSerializer
-from apps.workouts.models import WorkoutSession, SetLog
+from apps.workouts.serializers import (
+    WorkoutSessionSerializer,
+    WorkoutTemplateSerializer,
+)
+from apps.workouts.models import WorkoutSession, SetLog, TemplateExercise, WorkoutTemplate
 from apps.exercises.tests.factories import ExerciseFactory
+from apps.workouts.tests.factories import (
+    WorkoutTemplateFactory,
+    TemplateExerciseFactory,
+)
 
 
 def _context_for(user):
@@ -138,3 +145,91 @@ def test_route_data_rejects_non_list(user):
 
     assert not serializer.is_valid()
     assert "route_data" in serializer.errors
+
+
+# ---------------------------------------------------------------------------
+# WorkoutTemplate nested writable (TemplateExercise)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_create_template_with_exercises(user):
+    bench = ExerciseFactory(name="Bench")
+    squat = ExerciseFactory(name="Squat")
+    payload = {
+        "name": "Push Day",
+        "description": "Peito + tríceps",
+        "exercises": [
+            {"exercise": str(bench.id), "order": 1, "target_sets": 4, "target_reps": "8-12", "rest_seconds": 120},
+            {"exercise": str(squat.id), "order": 2, "target_sets": 3, "target_reps": "5", "rest_seconds": 180},
+        ],
+    }
+    serializer = WorkoutTemplateSerializer(data=payload, context=_context_for(user))
+    assert serializer.is_valid(), serializer.errors
+
+    template = serializer.save(user=user)
+
+    assert WorkoutTemplate.objects.count() == 1
+    assert TemplateExercise.objects.filter(template=template).count() == 2
+    first = template.exercises.first()
+    assert first.exercise == bench
+    assert first.target_reps == "8-12"
+
+
+@pytest.mark.django_db
+def test_create_template_without_exercises_still_works(user):
+    payload = {"name": "Empty", "description": ""}
+    serializer = WorkoutTemplateSerializer(data=payload, context=_context_for(user))
+    assert serializer.is_valid(), serializer.errors
+
+    template = serializer.save(user=user)
+
+    assert template.exercises.count() == 0
+
+
+@pytest.mark.django_db
+def test_update_template_replaces_exercises(user):
+    template = WorkoutTemplateFactory(user=user)
+    bench = ExerciseFactory(name="Bench")
+    TemplateExerciseFactory(template=template, exercise=bench, order=1)
+    TemplateExerciseFactory(template=template, exercise=bench, order=2)
+    assert template.exercises.count() == 2
+
+    squat = ExerciseFactory(name="Squat")
+    payload = {
+        "name": template.name,
+        "exercises": [
+            {"exercise": str(squat.id), "order": 1, "target_sets": 3, "target_reps": "5", "rest_seconds": 180},
+        ],
+    }
+    serializer = WorkoutTemplateSerializer(
+        instance=template, data=payload, context=_context_for(user)
+    )
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+
+    template.refresh_from_db()
+    assert template.exercises.count() == 1
+    assert template.exercises.first().exercise == squat
+
+
+@pytest.mark.django_db
+def test_create_template_with_invalid_exercise_uuid_raises(user):
+    import uuid
+
+    payload = {
+        "name": "X",
+        "exercises": [
+            {"exercise": str(uuid.uuid4()), "order": 1, "target_sets": 3, "target_reps": "10"},
+        ],
+    }
+    serializer = WorkoutTemplateSerializer(data=payload, context=_context_for(user))
+    assert serializer.is_valid(), serializer.errors
+
+    from apps.exercises.models import Exercise
+    with pytest.raises(Exercise.DoesNotExist):
+        serializer.save(user=user)
+
+    # Atomicidade — nada persiste
+    assert WorkoutTemplate.objects.count() == 0
+    assert TemplateExercise.objects.count() == 0
