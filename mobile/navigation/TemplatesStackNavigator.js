@@ -1,5 +1,6 @@
 import { createStackNavigator } from "@react-navigation/stack";
 import ExercisePickerScreen from "../screens/ExercisePickerScreen";
+import GuidedWorkoutScreen from "../screens/GuidedWorkoutScreen";
 import TemplateFormScreen from "../screens/TemplateFormScreen";
 import TemplatesListScreen from "../screens/TemplatesListScreen";
 
@@ -28,6 +29,11 @@ const TemplatesStackNavigator = () => {
         name="ExercisePicker"
         component={ExercisePickerScreen}
         options={{ title: "Escolher exercício" }}
+      />
+      <Stack.Screen
+        name="GuidedWorkout"
+        component={GuidedWorkoutScreen}
+        options={{ title: "Treino em andamento" }}
       />
     </Stack.Navigator>
   );
