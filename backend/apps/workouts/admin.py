@@ -1,5 +1,11 @@
 from django.contrib import admin
-from .models import WorkoutTemplate, WorkoutSession, SetLog, TemplateExercise
+from .models import (
+    WorkoutTemplate,
+    WorkoutSession,
+    SetLog,
+    TemplateExercise,
+    ScheduledWorkout,
+)
 
 
 class SetLogInline(admin.TabularInline):
@@ -35,3 +41,10 @@ class WorkoutSessionAdmin(admin.ModelAdmin):
 @admin.register(SetLog)
 class SetLogAdmin(admin.ModelAdmin):
     list_display = ["session", "exercise", "set_number", "weight_kg", "reps", "rpe"]
+
+
+@admin.register(ScheduledWorkout)
+class ScheduledWorkoutAdmin(admin.ModelAdmin):
+    list_display = ["user", "day_of_week", "order", "template", "created_at"]
+    list_filter = ["day_of_week"]
+    search_fields = ["user__email", "template__name"]

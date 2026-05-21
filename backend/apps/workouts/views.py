@@ -1,12 +1,15 @@
+from django.utils import timezone
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
-from .models import WorkoutTemplate, WorkoutSession
+from .models import WorkoutTemplate, WorkoutSession, ScheduledWorkout
 from .serializers import (
     WorkoutTemplateSerializer,
     WorkoutSessionSerializer,
     SessionSummaryResponseSerializer,
+    ScheduledWorkoutSerializer,
 )
 from .services import compute_session_summary
 
@@ -60,3 +63,27 @@ class WorkoutSessionViewSet(viewsets.ModelViewSet):
         payload = compute_session_summary(session)
         serializer = SessionSummaryResponseSerializer(payload)
         return Response(serializer.data)
+
+
+class ScheduledWorkoutViewSet(viewsets.ModelViewSet):
+    serializer_class = ScheduledWorkoutSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["day_of_week"]
+
+    def get_queryset(self):
+        return (
+            ScheduledWorkout.objects.filter(user=self.request.user)
+            .select_related("template")
+            .prefetch_related("template__exercises__exercise")
+        )
+
+    def perform_create(self, serializer: ScheduledWorkoutSerializer) -> None:
+        serializer.save(user=self.request.user)
+
+    @action(detail=False, methods=["get"], url_path="today", url_name="today")
+    def today(self, request: Request) -> Response:
+        weekday = timezone.localtime().weekday()
+        qs = self.get_queryset().filter(day_of_week=weekday)
+        serializer = self.get_serializer(qs, many=True)
+        return Response({"day_of_week": weekday, "results": serializer.data})

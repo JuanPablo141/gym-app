@@ -75,6 +75,43 @@ class TemplateExercise(models.Model):
         return f"{self.template.name} · {self.order}. {self.exercise.name}"
 
 
+class ScheduledWorkout(models.Model):
+    DAYS_OF_WEEK = [
+        (0, "Segunda"),
+        (1, "Terça"),
+        (2, "Quarta"),
+        (3, "Quinta"),
+        (4, "Sexta"),
+        (5, "Sábado"),
+        (6, "Domingo"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="scheduled_workouts",
+    )
+    template = models.ForeignKey(
+        WorkoutTemplate,
+        on_delete=models.CASCADE,
+        related_name="schedule_entries",
+    )
+    day_of_week = models.PositiveSmallIntegerField(choices=DAYS_OF_WEEK)
+    order = models.PositiveSmallIntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["day_of_week", "order"]
+        unique_together = [("user", "day_of_week", "template")]
+        verbose_name = "Scheduled Workout"
+        verbose_name_plural = "Scheduled Workouts"
+
+    def __str__(self) -> str:
+        day_name = self.get_day_of_week_display()
+        return f"{day_name} · {self.template.name} ({self.user})"
+
+
 class WorkoutSession(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
