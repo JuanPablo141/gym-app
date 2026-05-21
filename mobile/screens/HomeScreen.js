@@ -1,61 +1,65 @@
 import { useCallback } from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
-import MuscleGroupCard from "../components/MuscleGroupCard";
-import QueryState from "../components/QueryState";
-import { MUSCLE_GROUPS } from "../src/services/constants";
-import { useMuscleGroupCounts } from "../src/services/hooks";
+import { useFocusEffect } from "@react-navigation/native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
+import Button from "../components/Button";
+import TodaysWorkoutCard from "../components/TodaysWorkoutCard";
+import { DAY_NAMES, getLocalPythonWeekday } from "../src/services/format";
+import { useScheduledToday } from "../src/services/hooks";
 import { useAuth } from "../src/services/AuthContext";
 import { colors, spacing } from "../src/services/theme";
 
 const HomeScreen = ({ navigation }) => {
   const { user } = useAuth();
-  const { data: counts, isLoading, error, refetch } = useMuscleGroupCounts();
+  const today = useScheduledToday();
 
-  const handlePress = useCallback(
-    (groupKey) => {
-      navigation.navigate("Exercises", {
-        screen: "List",
-        params: { muscleGroup: groupKey },
+  useFocusEffect(
+    useCallback(() => {
+      today.refetch();
+    }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  const handleStartScheduled = useCallback(
+    (templateId) => {
+      navigation.navigate("Templates", {
+        screen: "GuidedWorkout",
+        params: { templateId },
       });
     },
     [navigation]
   );
 
-  const renderItem = useCallback(
-    ({ item }) => (
-      <MuscleGroupCard
-        group={item}
-        count={counts?.[item.key] ?? 0}
-        onPress={() => handlePress(item.key)}
-      />
-    ),
-    [counts, handlePress]
-  );
+  const handleEditSchedule = useCallback(() => {
+    navigation.navigate("Schedule");
+  }, [navigation]);
+
+  const dayName = DAY_NAMES[getLocalPythonWeekday()];
+  const hasSchedules = today.data && today.data.length > 0;
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Text style={styles.greeting}>
           Olá, {user?.first_name || user?.email?.split("@")[0] || "atleta"}!
         </Text>
-        <Text style={styles.subtitle}>Escolha um grupo muscular</Text>
+        <Text style={styles.subtitle}>{dayName}, vamos treinar?</Text>
       </View>
 
-      <QueryState
-        isLoading={isLoading}
-        error={error}
-        onRetry={refetch}
-        errorText="Não foi possível carregar os exercícios."
-      >
-        <FlatList
-          data={MUSCLE_GROUPS}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.key}
-          numColumns={2}
-          contentContainerStyle={styles.gridContent}
-        />
-      </QueryState>
-    </View>
+      <TodaysWorkoutCard
+        schedules={today.data}
+        onStart={handleStartScheduled}
+        onEditSchedule={handleEditSchedule}
+      />
+
+      {hasSchedules && (
+        <View style={styles.editScheduleWrapper}>
+          <Button
+            title="Editar agenda"
+            onPress={handleEditSchedule}
+            variant="secondary"
+          />
+        </View>
+      )}
+    </ScrollView>
   );
 };
 
@@ -63,6 +67,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
+  },
+  content: {
+    paddingBottom: spacing.xl,
   },
   header: {
     paddingHorizontal: spacing.lg,
@@ -79,9 +86,9 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: spacing.xs,
   },
-  gridContent: {
-    padding: 6,
-    paddingBottom: spacing.xl,
+  editScheduleWrapper: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
   },
 });
 

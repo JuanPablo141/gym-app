@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import HomeScreen from "../screens/HomeScreen";
+import HomeStackNavigator from "./HomeStackNavigator";
 import ProfileScreen from "../screens/ProfileScreen";
 import StackNavigator from "./StackNavigator";
 import TemplatesStackNavigator from "./TemplatesStackNavigator";
@@ -38,8 +38,8 @@ const BottomTabNavigator = () => {
     >
       <Tab.Screen
         name="Home"
-        component={HomeScreen}
-        options={{ title: "Início" }}
+        component={HomeStackNavigator}
+        options={{ title: "Início", headerShown: false }}
       />
       <Tab.Screen
         name="Exercises"
