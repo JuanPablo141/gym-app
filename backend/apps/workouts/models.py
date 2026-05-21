@@ -43,6 +43,38 @@ class WorkoutTemplate(models.Model):
         self.save(update_fields=["deleted_at"])
 
 
+class TemplateExercise(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    template = models.ForeignKey(
+        WorkoutTemplate,
+        on_delete=models.CASCADE,
+        related_name="exercises",
+    )
+    exercise = models.ForeignKey(
+        "exercises.Exercise",
+        on_delete=models.PROTECT,
+        related_name="+",
+    )
+    order = models.PositiveSmallIntegerField()
+    target_sets = models.PositiveSmallIntegerField(default=3)
+    target_reps = models.CharField(
+        max_length=20,
+        default="",
+        help_text="Notação livre: '10', '8-12', 'AMRAP', '30s', etc.",
+    )
+    rest_seconds = models.PositiveSmallIntegerField(default=90)
+    notes = models.TextField(blank=True, default="")
+
+    class Meta:
+        ordering = ["order"]
+        unique_together = [("template", "order")]
+        verbose_name = "Template Exercise"
+        verbose_name_plural = "Template Exercises"
+
+    def __str__(self) -> str:
+        return f"{self.template.name} · {self.order}. {self.exercise.name}"
+
+
 class WorkoutSession(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(

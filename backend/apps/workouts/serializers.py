@@ -3,18 +3,73 @@ from typing import Any
 from django.db import transaction
 from rest_framework import serializers
 from apps.exercises.serializers import ExerciseSerializer
-from .models import WorkoutTemplate, WorkoutSession, SetLog
+from .models import WorkoutTemplate, WorkoutSession, SetLog, TemplateExercise
+
+
+class TemplateExerciseSerializer(serializers.ModelSerializer):
+    exercise_detail = ExerciseSerializer(source="exercise", read_only=True)
+    exercise = serializers.UUIDField(write_only=True)
+
+    class Meta:
+        model = TemplateExercise
+        fields = (
+            "id",
+            "exercise",
+            "exercise_detail",
+            "order",
+            "target_sets",
+            "target_reps",
+            "rest_seconds",
+            "notes",
+        )
+        read_only_fields = ("id",)
 
 
 class WorkoutTemplateSerializer(serializers.ModelSerializer):
+    exercises = TemplateExerciseSerializer(many=True, required=False)
+
     class Meta:
         model = WorkoutTemplate
         fields = (
             "id", "name", "description",
             "is_deleted", "deleted_at",
             "created_at", "updated_at",
+            "exercises",
         )
         read_only_fields = ("id", "is_deleted", "deleted_at", "created_at", "updated_at")
+
+    @transaction.atomic
+    def create(self, validated_data: dict[str, Any]) -> WorkoutTemplate:
+        exercises_data: list[dict[str, Any]] = validated_data.pop("exercises", [])
+        template = WorkoutTemplate.objects.create(**validated_data)
+        self._create_exercises(template, exercises_data)
+        return template
+
+    @transaction.atomic
+    def update(
+        self, instance: WorkoutTemplate, validated_data: dict[str, Any]
+    ) -> WorkoutTemplate:
+        exercises_data: list[dict[str, Any]] | None = validated_data.pop("exercises", None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if exercises_data is not None:
+            instance.exercises.all().delete()
+            self._create_exercises(instance, exercises_data)
+        return instance
+
+    @staticmethod
+    def _create_exercises(
+        template: WorkoutTemplate, exercises_data: list[dict[str, Any]]
+    ) -> None:
+        from apps.exercises.models import Exercise
+
+        items: list[TemplateExercise] = []
+        for data in exercises_data:
+            exercise_id = data.pop("exercise")
+            exercise = Exercise.objects.get(pk=exercise_id)
+            items.append(TemplateExercise(template=template, exercise=exercise, **data))
+        TemplateExercise.objects.bulk_create(items)
 
 
 class SetLogSerializer(serializers.ModelSerializer):

@@ -4,7 +4,7 @@ from django.utils import timezone
 from factory.django import DjangoModelFactory
 from apps.users.tests.factories import UserFactory
 from apps.exercises.tests.factories import ExerciseFactory
-from apps.workouts.models import WorkoutTemplate, WorkoutSession, SetLog
+from apps.workouts.models import WorkoutTemplate, WorkoutSession, SetLog, TemplateExercise
 
 
 class WorkoutTemplateFactory(DjangoModelFactory):
@@ -37,3 +37,15 @@ class SetLogFactory(DjangoModelFactory):
     weight_kg = "80.00"
     reps = 8
     rpe = "7.5"
+
+
+class TemplateExerciseFactory(DjangoModelFactory):
+    class Meta:
+        model = TemplateExercise
+
+    template = factory.SubFactory(WorkoutTemplateFactory)
+    exercise = factory.SubFactory(ExerciseFactory)
+    order = factory.Sequence(lambda n: n + 1)
+    target_sets = 3
+    target_reps = "8-12"
+    rest_seconds = 90

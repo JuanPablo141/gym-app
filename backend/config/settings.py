@@ -33,6 +33,7 @@ THIRD_PARTY_APPS: list[str] = [
     "rest_framework",
     "rest_framework_simplejwt",
     "django_filters",
+    "corsheaders",
 ]
 
 LOCAL_APPS: list[str] = [
@@ -44,6 +45,7 @@ LOCAL_APPS: list[str] = [
 INSTALLED_APPS: list[str] = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE: list[str] = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -51,6 +53,16 @@ MIDDLEWARE: list[str] = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+
+# CORS — permite que o Expo web (porta 8081) consuma a API local em dev.
+# Em produção, restringir CORS_ALLOWED_ORIGINS ao domínio real.
+CORS_ALLOWED_ORIGINS: list[str] = [
+    "http://localhost:8081",
+    "http://127.0.0.1:8081",
+    "http://localhost:19006",
+    "http://127.0.0.1:19006",
+    "http://192.168.1.4:8081",  # IP local da máquina (ajustar conforme necessário)
 ]
 
 ROOT_URLCONF = "config.urls"

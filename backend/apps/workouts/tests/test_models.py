@@ -1,14 +1,16 @@
 from datetime import timedelta
 import pytest
+from django.db import IntegrityError
 from django.db.models import ProtectedError
 from django.utils import timezone
-from apps.workouts.models import WorkoutTemplate, SetLog
+from apps.workouts.models import WorkoutTemplate, SetLog, TemplateExercise
 from apps.exercises.models import Exercise
 from apps.exercises.tests.factories import ExerciseFactory
 from apps.workouts.tests.factories import (
     WorkoutTemplateFactory,
     WorkoutSessionFactory,
     SetLogFactory,
+    TemplateExerciseFactory,
 )
 
 
@@ -104,6 +106,53 @@ def test_duration_minutes_calculates_from_started_finished():
 def test_cannot_delete_exercise_with_existing_set_logs():
     exercise = ExerciseFactory()
     SetLogFactory(exercise=exercise)
+
+    with pytest.raises(ProtectedError):
+        exercise.delete()
+
+
+# ---------------------------------------------------------------------------
+# TemplateExercise
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_template_exercises_ordered_by_order():
+    template = WorkoutTemplateFactory()
+    third = TemplateExerciseFactory(template=template, order=3)
+    first = TemplateExerciseFactory(template=template, order=1)
+    second = TemplateExerciseFactory(template=template, order=2)
+
+    ids = list(template.exercises.values_list("id", flat=True))
+
+    assert ids == [first.id, second.id, third.id]
+
+
+@pytest.mark.django_db
+def test_template_exercise_unique_together_per_template():
+    template = WorkoutTemplateFactory()
+    TemplateExerciseFactory(template=template, order=1)
+
+    with pytest.raises(IntegrityError):
+        TemplateExerciseFactory(template=template, order=1)
+
+
+@pytest.mark.django_db
+def test_template_hard_delete_cascades_to_exercises():
+    template = WorkoutTemplateFactory()
+    TemplateExerciseFactory.create_batch(3, template=template)
+    assert TemplateExercise.objects.filter(template=template).count() == 3
+
+    # Bypass soft delete usando o queryset hard_delete
+    WorkoutTemplate.all_objects.filter(pk=template.pk).hard_delete()
+
+    assert TemplateExercise.objects.filter(template_id=template.pk).count() == 0
+
+
+@pytest.mark.django_db
+def test_cannot_delete_exercise_used_in_template():
+    exercise = ExerciseFactory()
+    TemplateExerciseFactory(exercise=exercise)
 
     with pytest.raises(ProtectedError):
         exercise.delete()

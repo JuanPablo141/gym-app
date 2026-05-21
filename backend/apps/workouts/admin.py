@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import WorkoutTemplate, WorkoutSession, SetLog
+from .models import WorkoutTemplate, WorkoutSession, SetLog, TemplateExercise
 
 
 class SetLogInline(admin.TabularInline):
@@ -8,11 +8,18 @@ class SetLogInline(admin.TabularInline):
     readonly_fields = ["id", "created_at"]
 
 
+class TemplateExerciseInline(admin.TabularInline):
+    model = TemplateExercise
+    extra = 0
+    fields = ["order", "exercise", "target_sets", "target_reps", "rest_seconds", "notes"]
+
+
 @admin.register(WorkoutTemplate)
 class WorkoutTemplateAdmin(admin.ModelAdmin):
     list_display = ["name", "user", "is_deleted", "deleted_at", "created_at"]
     list_filter = ["deleted_at"]
     search_fields = ["name", "user__email"]
+    inlines = [TemplateExerciseInline]
 
     def get_queryset(self, request):
         return WorkoutTemplate.all_objects.all()
