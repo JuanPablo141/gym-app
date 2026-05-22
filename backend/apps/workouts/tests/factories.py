@@ -4,7 +4,13 @@ from django.utils import timezone
 from factory.django import DjangoModelFactory
 from apps.users.tests.factories import UserFactory
 from apps.exercises.tests.factories import ExerciseFactory
-from apps.workouts.models import WorkoutTemplate, WorkoutSession, SetLog, TemplateExercise
+from apps.workouts.models import (
+    WorkoutTemplate,
+    WorkoutSession,
+    SetLog,
+    TemplateExercise,
+    ScheduledWorkout,
+)
 
 
 class WorkoutTemplateFactory(DjangoModelFactory):
@@ -49,3 +55,13 @@ class TemplateExerciseFactory(DjangoModelFactory):
     target_sets = 3
     target_reps = "8-12"
     rest_seconds = 90
+
+
+class ScheduledWorkoutFactory(DjangoModelFactory):
+    class Meta:
+        model = ScheduledWorkout
+
+    user = factory.SubFactory(UserFactory)
+    template = factory.SubFactory(WorkoutTemplateFactory)
+    day_of_week = 0
+    order = 1

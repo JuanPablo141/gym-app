@@ -8,6 +8,7 @@ from apps.workouts.tests.factories import (
     WorkoutTemplateFactory,
     WorkoutSessionFactory,
     SetLogFactory,
+    ScheduledWorkoutFactory,
 )
 
 
@@ -92,3 +93,52 @@ def test_restore_template_brings_it_back(authed_client, user):
     assert response.status_code == status.HTTP_200_OK
     template.refresh_from_db()
     assert template.deleted_at is None
+
+
+# ---------------------------------------------------------------------------
+# ScheduledWorkout endpoints
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_today_returns_only_current_day(authed_client, user):
+    # Cria schedules em todos os 7 dias
+    for dow in range(7):
+        template = WorkoutTemplateFactory(user=user)
+        ScheduledWorkoutFactory(user=user, template=template, day_of_week=dow)
+
+    response = authed_client.get(reverse("scheduled-workout-today"))
+
+    assert response.status_code == status.HTTP_200_OK
+    today_dow = timezone.localtime().weekday()
+    assert response.data["day_of_week"] == today_dow
+    assert len(response.data["results"]) == 1
+    assert response.data["results"][0]["day_of_week"] == today_dow
+
+
+@pytest.mark.django_db
+def test_today_only_returns_own_schedules(authed_client, user, other_user):
+    today_dow = timezone.localtime().weekday()
+    own = WorkoutTemplateFactory(user=user)
+    foreign = WorkoutTemplateFactory(user=other_user)
+    ScheduledWorkoutFactory(user=user, template=own, day_of_week=today_dow)
+    ScheduledWorkoutFactory(user=other_user, template=foreign, day_of_week=today_dow)
+
+    response = authed_client.get(reverse("scheduled-workout-today"))
+
+    assert response.status_code == status.HTTP_200_OK
+    assert len(response.data["results"]) == 1
+
+
+@pytest.mark.django_db
+def test_filter_scheduled_workouts_by_day(authed_client, user):
+    t1 = WorkoutTemplateFactory(user=user)
+    t2 = WorkoutTemplateFactory(user=user)
+    ScheduledWorkoutFactory(user=user, template=t1, day_of_week=0)
+    ScheduledWorkoutFactory(user=user, template=t2, day_of_week=2)
+
+    response = authed_client.get(reverse("scheduled-workout-list"), {"day_of_week": 2})
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["count"] == 1
+    assert response.data["results"][0]["day_of_week"] == 2

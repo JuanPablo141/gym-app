@@ -3,14 +3,16 @@ import pytest
 from django.db import IntegrityError
 from django.db.models import ProtectedError
 from django.utils import timezone
-from apps.workouts.models import WorkoutTemplate, SetLog, TemplateExercise
+from apps.workouts.models import WorkoutTemplate, SetLog, TemplateExercise, ScheduledWorkout
 from apps.exercises.models import Exercise
 from apps.exercises.tests.factories import ExerciseFactory
+from apps.users.tests.factories import UserFactory
 from apps.workouts.tests.factories import (
     WorkoutTemplateFactory,
     WorkoutSessionFactory,
     SetLogFactory,
     TemplateExerciseFactory,
+    ScheduledWorkoutFactory,
 )
 
 
@@ -156,3 +158,46 @@ def test_cannot_delete_exercise_used_in_template():
 
     with pytest.raises(ProtectedError):
         exercise.delete()
+
+
+# ---------------------------------------------------------------------------
+# ScheduledWorkout
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_scheduled_workout_unique_template_per_day():
+    template = WorkoutTemplateFactory()
+    ScheduledWorkoutFactory(user=template.user, template=template, day_of_week=0)
+
+    with pytest.raises(IntegrityError):
+        ScheduledWorkoutFactory(user=template.user, template=template, day_of_week=0)
+
+
+@pytest.mark.django_db
+def test_scheduled_workout_ordering_by_day_and_order():
+    user = UserFactory()
+    t1 = WorkoutTemplateFactory(user=user)
+    t2 = WorkoutTemplateFactory(user=user)
+    later = ScheduledWorkoutFactory(user=user, template=t1, day_of_week=2, order=2)
+    earlier = ScheduledWorkoutFactory(user=user, template=t2, day_of_week=2, order=1)
+
+    ids = list(
+        ScheduledWorkout.objects.filter(user=user, day_of_week=2).values_list(
+            "id", flat=True
+        )
+    )
+
+    assert ids == [earlier.id, later.id]
+
+
+@pytest.mark.django_db
+def test_template_hard_delete_cascades_to_schedule():
+    template = WorkoutTemplateFactory()
+    ScheduledWorkoutFactory(user=template.user, template=template, day_of_week=3)
+    template_id = template.id
+    assert ScheduledWorkout.objects.filter(template_id=template_id).count() == 1
+
+    WorkoutTemplate.all_objects.filter(pk=template_id).hard_delete()
+
+    assert ScheduledWorkout.objects.filter(template_id=template_id).count() == 0

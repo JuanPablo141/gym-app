@@ -7,8 +7,15 @@ from rest_framework.test import APIRequestFactory
 from apps.workouts.serializers import (
     WorkoutSessionSerializer,
     WorkoutTemplateSerializer,
+    ScheduledWorkoutSerializer,
 )
-from apps.workouts.models import WorkoutSession, SetLog, TemplateExercise, WorkoutTemplate
+from apps.workouts.models import (
+    WorkoutSession,
+    SetLog,
+    TemplateExercise,
+    WorkoutTemplate,
+    ScheduledWorkout,
+)
 from apps.exercises.tests.factories import ExerciseFactory
 from apps.workouts.tests.factories import (
     WorkoutTemplateFactory,
@@ -233,3 +240,34 @@ def test_create_template_with_invalid_exercise_uuid_raises(user):
     # Atomicidade — nada persiste
     assert WorkoutTemplate.objects.count() == 0
     assert TemplateExercise.objects.count() == 0
+
+
+# ---------------------------------------------------------------------------
+# ScheduledWorkout
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_create_scheduled_workout_resolves_template(user):
+    template = WorkoutTemplateFactory(user=user)
+    payload = {"template": str(template.id), "day_of_week": 2, "order": 1}
+    serializer = ScheduledWorkoutSerializer(data=payload, context=_context_for(user))
+    assert serializer.is_valid(), serializer.errors
+
+    schedule = serializer.save(user=user)
+
+    assert schedule.template == template
+    assert schedule.day_of_week == 2
+
+
+@pytest.mark.django_db
+def test_create_scheduled_workout_with_invalid_template_uuid_raises(user):
+    import uuid
+    payload = {"template": str(uuid.uuid4()), "day_of_week": 1, "order": 1}
+    serializer = ScheduledWorkoutSerializer(data=payload, context=_context_for(user))
+    assert serializer.is_valid(), serializer.errors
+
+    with pytest.raises(WorkoutTemplate.DoesNotExist):
+        serializer.save(user=user)
+
+    assert ScheduledWorkout.objects.count() == 0

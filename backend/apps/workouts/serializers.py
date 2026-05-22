@@ -3,7 +3,13 @@ from typing import Any
 from django.db import transaction
 from rest_framework import serializers
 from apps.exercises.serializers import ExerciseSerializer
-from .models import WorkoutTemplate, WorkoutSession, SetLog, TemplateExercise
+from .models import (
+    WorkoutTemplate,
+    WorkoutSession,
+    SetLog,
+    TemplateExercise,
+    ScheduledWorkout,
+)
 
 
 class TemplateExerciseSerializer(serializers.ModelSerializer):
@@ -263,3 +269,36 @@ class SessionSummaryResponseSerializer(serializers.Serializer):
     exercises = SessionSummaryExerciseSerializer(many=True)
     muscle_groups_trained = serializers.ListField(child=serializers.CharField())
     new_prs_count = serializers.IntegerField()
+
+
+class ScheduledWorkoutSerializer(serializers.ModelSerializer):
+    template_detail = WorkoutTemplateSerializer(source="template", read_only=True)
+    template = serializers.UUIDField(write_only=True)
+
+    class Meta:
+        model = ScheduledWorkout
+        fields = (
+            "id",
+            "template",
+            "template_detail",
+            "day_of_week",
+            "order",
+            "created_at",
+        )
+        read_only_fields = ("id", "created_at")
+
+    def create(self, validated_data: dict[str, Any]) -> ScheduledWorkout:
+        template_id = validated_data.pop("template")
+        template = WorkoutTemplate.objects.get(pk=template_id)
+        return ScheduledWorkout.objects.create(template=template, **validated_data)
+
+    def update(
+        self, instance: ScheduledWorkout, validated_data: dict[str, Any]
+    ) -> ScheduledWorkout:
+        if "template" in validated_data:
+            template_id = validated_data.pop("template")
+            instance.template = WorkoutTemplate.objects.get(pk=template_id)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
