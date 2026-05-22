@@ -62,7 +62,7 @@ CORS_ALLOWED_ORIGINS: list[str] = [
     "http://127.0.0.1:8081",
     "http://localhost:19006",
     "http://127.0.0.1:19006",
-    "http://172.31.222.101:8081",  # IP local da máquina (ajustar conforme necessário)
+    "http://192.168.1.4:8081",  # IP local da máquina (ajustar conforme necessário)
 ]
 
 ROOT_URLCONF = "config.urls"
