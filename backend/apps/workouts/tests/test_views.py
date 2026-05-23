@@ -1,4 +1,5 @@
 from datetime import timedelta
+from decimal import Decimal
 import pytest
 from django.urls import reverse
 from django.utils import timezone
@@ -128,6 +129,128 @@ def test_today_only_returns_own_schedules(authed_client, user, other_user):
 
     assert response.status_code == status.HTTP_200_OK
     assert len(response.data["results"]) == 1
+
+
+# ---------------------------------------------------------------------------
+# Activity stats endpoint
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_activity_stats_7d_uses_daily_granularity(authed_client, user):
+    bench = ExerciseFactory()
+    now = timezone.localtime()
+    session = WorkoutSessionFactory(user=user, started_at=now - timedelta(hours=1))
+    SetLogFactory(session=session, exercise=bench, weight_kg=Decimal("80"), reps=10)
+
+    response = authed_client.get(
+        reverse("workout-session-activity-stats"), {"days": 7}
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["granularity"] == "day"
+    assert len(response.data["buckets"]) == 7
+    assert response.data["total_sessions"] == 1
+    assert Decimal(response.data["total_volume_kg"]) == Decimal("800.00")
+
+
+@pytest.mark.django_db
+def test_activity_stats_90d_uses_weekly_granularity(authed_client, user):
+    response = authed_client.get(
+        reverse("workout-session-activity-stats"), {"days": 90}
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["granularity"] == "week"
+    # ~13 semanas em 90 dias (depende de quando hoje cai na semana)
+    assert 12 <= len(response.data["buckets"]) <= 14
+
+
+@pytest.mark.django_db
+def test_activity_stats_365d_uses_monthly_granularity(authed_client, user):
+    response = authed_client.get(
+        reverse("workout-session-activity-stats"), {"days": 365}
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["granularity"] == "month"
+    # ~12 meses
+    assert 12 <= len(response.data["buckets"]) <= 13
+
+
+@pytest.mark.django_db
+def test_activity_stats_rejects_invalid_days_and_uses_default(authed_client):
+    response = authed_client.get(
+        reverse("workout-session-activity-stats"), {"days": 99}
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["days"] == 30
+
+
+@pytest.mark.django_db
+def test_activity_stats_isolated_by_user(authed_client, user, other_user):
+    bench = ExerciseFactory()
+    now = timezone.localtime()
+    foreign = WorkoutSessionFactory(user=other_user, started_at=now - timedelta(hours=1))
+    SetLogFactory(session=foreign, exercise=bench, weight_kg=Decimal("100"), reps=10)
+
+    response = authed_client.get(
+        reverse("workout-session-activity-stats"), {"days": 7}
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["total_sessions"] == 0
+    assert all(b["session_count"] == 0 for b in response.data["buckets"])
+
+
+@pytest.mark.django_db
+def test_activity_stats_templates_breakdown(authed_client, user):
+    bench = ExerciseFactory()
+    peito = WorkoutTemplateFactory(user=user, name="Peito")
+    costas = WorkoutTemplateFactory(user=user, name="Costas")
+    now = timezone.localtime()
+    # 2 sessões de Peito, 1 de Costas, 1 sem template (treino livre)
+    for tmpl in [peito, peito, costas]:
+        s = WorkoutSessionFactory(
+            user=user, template=tmpl, started_at=now - timedelta(hours=1)
+        )
+        SetLogFactory(session=s, exercise=bench)
+    free = WorkoutSessionFactory(user=user, template=None, started_at=now - timedelta(hours=2))
+    SetLogFactory(session=free, exercise=bench)
+
+    response = authed_client.get(
+        reverse("workout-session-activity-stats"), {"days": 7}
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    breakdown = response.data["templates_breakdown"]
+    assert len(breakdown) == 3
+    # Ordenado por contagem decrescente
+    assert breakdown[0]["template_name"] == "Peito"
+    assert breakdown[0]["session_count"] == 2
+    # Treino sem template aparece com template_name=None
+    free_row = next(b for b in breakdown if b["template_name"] is None)
+    assert free_row["session_count"] == 1
+
+
+@pytest.mark.django_db
+def test_activity_stats_streak_counts_consecutive_weeks(authed_client, user):
+    bench = ExerciseFactory()
+    now = timezone.localtime()
+    # 3 semanas consecutivas com treino + um gap + 1 isolado
+    for weeks_ago in [0, 1, 2, 5]:
+        s = WorkoutSessionFactory(
+            user=user, started_at=now - timedelta(weeks=weeks_ago, hours=1)
+        )
+        SetLogFactory(session=s, exercise=bench)
+
+    response = authed_client.get(
+        reverse("workout-session-activity-stats"), {"days": 90}
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["longest_streak_weeks"] == 3
 
 
 @pytest.mark.django_db

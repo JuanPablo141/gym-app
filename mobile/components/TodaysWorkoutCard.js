@@ -46,7 +46,7 @@ const TodaysWorkoutCard = ({ schedules, onStart, onEditSchedule }) => {
             <View style={styles.startWrapper}>
               <Button
                 title="▶ Iniciar agora"
-                onPress={() => onStart(sched.template)}
+                onPress={() => onStart(template?.id)}
               />
             </View>
           </Card>

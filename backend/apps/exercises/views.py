@@ -145,3 +145,25 @@ class ExerciseViewSet(viewsets.ModelViewSet):
 
         serializer = ProgressionResponseSerializer(payload)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["get"], url_path="volume-trend", url_name="volume-trend")
+    def volume_trend(self, request: Request, pk=None) -> Response:
+        """
+        GET /api/exercises/{id}/volume-trend/?sessions=10
+
+        Returns the authenticated user's volume per session for this exercise,
+        ordered chronologically (oldest first). Default 10 sessions, max 50.
+        """
+        from apps.workouts.serializers import VolumeTrendResponseSerializer
+        from apps.workouts.services import compute_volume_trend
+
+        try:
+            limit = int(request.query_params.get("sessions", 10))
+        except (TypeError, ValueError):
+            limit = 10
+        limit = max(1, min(limit, 50))
+
+        exercise = self.get_object()
+        payload = compute_volume_trend(request.user, exercise, limit)
+        serializer = VolumeTrendResponseSerializer(payload)
+        return Response(serializer.data)
