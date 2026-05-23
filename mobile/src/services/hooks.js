@@ -151,6 +151,37 @@ export const createWorkoutSession = async (payload) => {
   return response.data;
 };
 
+export const useSessions = () => {
+  return useFetch(async () => fetchAll(`/workouts/sessions/`), []);
+};
+
+export const useSession = (id) => {
+  return useFetch(async () => {
+    const response = await api.get(`/workouts/sessions/${id}/`);
+    return response.data;
+  }, [id]);
+};
+
+export const useSessionSummary = (id) => {
+  return useFetch(async () => {
+    const response = await api.get(`/workouts/sessions/${id}/summary/`);
+    return response.data;
+  }, [id]);
+};
+
+export const updateSessionNotes = async (id, notes) => {
+  const response = await api.patch(`/workouts/sessions/${id}/`, { notes });
+  return response.data;
+};
+
+export const updateSetLogNotes = async (sessionId, setLogId, notes) => {
+  const response = await api.patch(
+    `/workouts/sessions/${sessionId}/set-logs/${setLogId}/`,
+    { notes }
+  );
+  return response.data;
+};
+
 export const uploadProgressPhoto = async ({ uri, takenAt, notes }) => {
   const form = new FormData();
   form.append("image", { uri, type: "image/jpeg", name: "photo.jpg" });

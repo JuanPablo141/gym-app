@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import Button from "./Button";
 import Card from "./Card";
 import Stepper from "./Stepper";
 import { colors, spacing } from "../src/services/theme";
+
+const NOTE_MAX = 200;
 
 const InlineSetForm = ({
   setNumber,
@@ -18,11 +21,15 @@ const InlineSetForm = ({
     defaultReps !== null && defaultReps !== undefined ? String(defaultReps) : ""
   );
   const [rpe, setRpe] = useState("");
+  const [notes, setNotes] = useState("");
+  const [notesExpanded, setNotesExpanded] = useState(false);
 
   useEffect(() => {
     setWeight(defaultWeight ?? "");
     setReps(defaultReps !== null && defaultReps !== undefined ? String(defaultReps) : "");
     setRpe("");
+    setNotes("");
+    setNotesExpanded(false);
   }, [setNumber, defaultWeight, defaultReps]);
 
   const canConfirm = Number(reps) > 0;
@@ -32,6 +39,7 @@ const InlineSetForm = ({
       weight_kg: weight ? weight : null,
       reps: Number(reps) || 0,
       rpe: rpe ? rpe : null,
+      notes: notes.trim(),
     });
   };
 
@@ -74,6 +82,33 @@ const InlineSetForm = ({
         />
       </View>
 
+      {notesExpanded ? (
+        <View style={styles.notesWrap}>
+          <TextInput
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="Como foi essa série?"
+            placeholderTextColor={colors.textSubtle}
+            multiline
+            maxLength={NOTE_MAX}
+            style={styles.notesInput}
+          />
+          <Text style={styles.notesCounter}>{`${notes.length}/${NOTE_MAX}`}</Text>
+        </View>
+      ) : (
+        <TouchableOpacity
+          onPress={() => setNotesExpanded(true)}
+          style={styles.notesToggle}
+        >
+          <Ionicons
+            name="add-circle-outline"
+            size={16}
+            color={colors.textSubtle}
+          />
+          <Text style={styles.notesToggleText}>Adicionar nota</Text>
+        </TouchableOpacity>
+      )}
+
       <Button
         title="Confirmar Série"
         onPress={handleConfirm}
@@ -100,6 +135,40 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     gap: spacing.md,
     marginBottom: spacing.md,
+  },
+  notesToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  notesToggleText: {
+    marginLeft: 4,
+    color: colors.textSubtle,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  notesWrap: {
+    marginBottom: spacing.md,
+  },
+  notesInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    fontSize: 14,
+    color: colors.text,
+    minHeight: 48,
+    textAlignVertical: "top",
+    backgroundColor: colors.inputBg,
+  },
+  notesCounter: {
+    alignSelf: "flex-end",
+    marginTop: 2,
+    fontSize: 11,
+    color: colors.textSubtle,
   },
 });
 

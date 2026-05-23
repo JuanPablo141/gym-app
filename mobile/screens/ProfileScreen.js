@@ -1,4 +1,13 @@
-import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import PhotoPicker from "../components/PhotoPicker";
@@ -8,7 +17,7 @@ import { useProgressPhotos } from "../src/services/hooks";
 import { formatDate } from "../src/services/format";
 import { colors, spacing } from "../src/services/theme";
 
-const ProfileScreen = () => {
+const ProfileScreen = ({ navigation }) => {
   const { user, logout } = useAuth();
   const { data: photos, isLoading, error, refetch } = useProgressPhotos();
 
@@ -28,6 +37,16 @@ const ProfileScreen = () => {
         )}
         <Text style={styles.joined}>Membro desde {formatDate(user?.date_joined)}</Text>
       </Card>
+
+      <TouchableOpacity
+        style={styles.historyEntry}
+        onPress={() => navigation.navigate("SessionsList")}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="time-outline" size={20} color={colors.primary} />
+        <Text style={styles.historyEntryText}>Histórico de treinos</Text>
+        <Ionicons name="chevron-forward" size={18} color={colors.textSubtle} />
+      </TouchableOpacity>
 
       <Text style={styles.sectionTitle}>Fotos de Progresso</Text>
 
@@ -145,6 +164,28 @@ const styles = StyleSheet.create({
   actions: {
     marginHorizontal: spacing.lg,
     marginTop: spacing.xl,
+  },
+  historyEntry: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  historyEntryText: {
+    flex: 1,
+    marginLeft: spacing.sm,
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.text,
   },
 });
 
