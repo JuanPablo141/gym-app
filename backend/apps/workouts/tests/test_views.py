@@ -254,6 +254,67 @@ def test_activity_stats_streak_counts_consecutive_weeks(authed_client, user):
 
 
 # ---------------------------------------------------------------------------
+# PATCH session notes + set_log notes
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_patch_session_notes_updates_field(authed_client, user):
+    session = WorkoutSessionFactory(user=user, notes="")
+
+    url = reverse("workout-session-detail", kwargs={"pk": session.id})
+    response = authed_client.patch(url, {"notes": "foi pesado hoje"}, format="json")
+
+    assert response.status_code == status.HTTP_200_OK
+    session.refresh_from_db()
+    assert session.notes == "foi pesado hoje"
+
+
+@pytest.mark.django_db
+def test_update_set_log_notes_persists(authed_client, user):
+    session = WorkoutSessionFactory(user=user)
+    set_log = SetLogFactory(session=session, exercise=ExerciseFactory(), notes="")
+
+    url = reverse(
+        "workout-session-set-log-update",
+        kwargs={"pk": session.id, "set_log_id": set_log.id},
+    )
+    response = authed_client.patch(url, {"notes": "barra escorregou"}, format="json")
+
+    assert response.status_code == status.HTTP_200_OK
+    set_log.refresh_from_db()
+    assert set_log.notes == "barra escorregou"
+
+
+@pytest.mark.django_db
+def test_update_set_log_rejects_foreign_session(authed_client, other_user):
+    session = WorkoutSessionFactory(user=other_user)
+    set_log = SetLogFactory(session=session, exercise=ExerciseFactory())
+
+    url = reverse(
+        "workout-session-set-log-update",
+        kwargs={"pk": session.id, "set_log_id": set_log.id},
+    )
+    response = authed_client.patch(url, {"notes": "tentativa"}, format="json")
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_update_set_log_rejects_notes_too_long(authed_client, user):
+    session = WorkoutSessionFactory(user=user)
+    set_log = SetLogFactory(session=session, exercise=ExerciseFactory())
+
+    url = reverse(
+        "workout-session-set-log-update",
+        kwargs={"pk": session.id, "set_log_id": set_log.id},
+    )
+    response = authed_client.patch(url, {"notes": "x" * 201}, format="json")
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+# ---------------------------------------------------------------------------
 # Heatmap endpoint
 # ---------------------------------------------------------------------------
 

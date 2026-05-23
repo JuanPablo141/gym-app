@@ -51,6 +51,44 @@ def test_create_session_with_nested_sets_persists_both(user):
 
 
 @pytest.mark.django_db
+def test_create_session_persists_set_notes(user):
+    bench = ExerciseFactory()
+    payload = {
+        "started_at": timezone.now().isoformat(),
+        "set_logs": [
+            {
+                "exercise": str(bench.id),
+                "set_number": 1,
+                "weight_kg": "80.00",
+                "reps": 8,
+                "notes": "ombro doendo",
+            },
+        ],
+    }
+    serializer = WorkoutSessionSerializer(data=payload, context=_context_for(user))
+    assert serializer.is_valid(), serializer.errors
+    serializer.save()
+
+    assert SetLog.objects.first().notes == "ombro doendo"
+
+
+@pytest.mark.django_db
+def test_set_notes_optional_defaults_to_empty(user):
+    bench = ExerciseFactory()
+    payload = {
+        "started_at": timezone.now().isoformat(),
+        "set_logs": [
+            {"exercise": str(bench.id), "set_number": 1, "weight_kg": "80.00", "reps": 8},
+        ],
+    }
+    serializer = WorkoutSessionSerializer(data=payload, context=_context_for(user))
+    assert serializer.is_valid(), serializer.errors
+    serializer.save()
+
+    assert SetLog.objects.first().notes == ""
+
+
+@pytest.mark.django_db
 def test_create_session_with_invalid_exercise_uuid_raises(user):
     payload = {
         "started_at": timezone.now().isoformat(),

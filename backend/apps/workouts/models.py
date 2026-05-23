@@ -170,6 +170,7 @@ class SetLog(models.Model):
         max_digits=3, decimal_places=1, null=True, blank=True,
         help_text="Rate of Perceived Exertion (1–10 scale).",
     )
+    notes = models.TextField(blank=True, default="", max_length=200)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

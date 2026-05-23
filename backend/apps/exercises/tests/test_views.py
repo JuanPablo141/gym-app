@@ -58,6 +58,19 @@ def test_history_only_includes_authenticated_user_sessions(authed_client, user, 
 
 
 @pytest.mark.django_db
+def test_history_exposes_set_notes(authed_client, user):
+    bench = ExerciseFactory(name="Bench")
+    session = WorkoutSessionFactory(user=user)
+    SetLogFactory(session=session, exercise=bench, notes="ombro doendo")
+
+    url = reverse("exercise-history", kwargs={"pk": bench.id})
+    response = authed_client.get(url)
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["results"][0]["sets"][0]["notes"] == "ombro doendo"
+
+
+@pytest.mark.django_db
 def test_progression_returns_suggestion_after_history(authed_client, user):
     bench = ExerciseFactory(name="Bench")
     session = WorkoutSessionFactory(user=user)

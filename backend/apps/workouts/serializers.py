@@ -92,6 +92,7 @@ class SetLogSerializer(serializers.ModelSerializer):
             "weight_kg",
             "reps",
             "rpe",
+            "notes",
             "created_at",
         )
         read_only_fields = ("id", "created_at")
@@ -111,12 +112,14 @@ class WorkoutSessionSerializer(serializers.ModelSerializer):
     """
     set_logs = SetLogSerializer(many=True, required=False)
     duration_minutes = serializers.ReadOnlyField()
+    template_name = serializers.CharField(source="template.name", read_only=True, default=None)
 
     class Meta:
         model = WorkoutSession
         fields = (
             "id",
             "template",
+            "template_name",
             "started_at",
             "finished_at",
             "notes",
@@ -181,7 +184,7 @@ class WorkoutSessionSerializer(serializers.ModelSerializer):
 class HistorySetSerializer(serializers.ModelSerializer):
     class Meta:
         model = SetLog
-        fields = ("set_number", "weight_kg", "reps", "rpe")
+        fields = ("set_number", "weight_kg", "reps", "rpe", "notes")
 
 
 class ExerciseHistorySessionSerializer(serializers.ModelSerializer):

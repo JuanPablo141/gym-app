@@ -12,6 +12,7 @@ from .serializers import (
     ScheduledWorkoutSerializer,
     ActivityStatsResponseSerializer,
     HeatmapResponseSerializer,
+    SetLogSerializer,
 )
 from .services import (
     compute_session_summary,
@@ -113,6 +114,36 @@ class WorkoutSessionViewSet(viewsets.ModelViewSet):
         payload = compute_workout_heatmap(request.user, days)
         serializer = HeatmapResponseSerializer(payload)
         return Response(serializer.data)
+
+    @action(
+        detail=True,
+        methods=["patch"],
+        url_path=r"set-logs/(?P<set_log_id>[^/.]+)",
+        url_name="set-log-update",
+    )
+    def update_set_log(self, request: Request, pk=None, set_log_id=None) -> Response:
+        """
+        PATCH /api/workouts/sessions/{id}/set-logs/{set_log_id}/
+
+        Atualiza apenas o campo `notes` de uma série de uma sessão do próprio
+        usuário (isolamento garantido pelo `get_object()`).
+        """
+        session = self.get_object()
+        set_log = session.set_logs.filter(pk=set_log_id).first()
+        if set_log is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        notes = request.data.get("notes")
+        if notes is None:
+            return Response(
+                {"notes": ["Required."]}, status=status.HTTP_400_BAD_REQUEST
+            )
+        if len(notes) > 200:
+            return Response(
+                {"notes": ["Max 200 chars."]}, status=status.HTTP_400_BAD_REQUEST
+            )
+        set_log.notes = notes
+        set_log.save(update_fields=["notes"])
+        return Response(SetLogSerializer(set_log).data)
 
 
 class ScheduledWorkoutViewSet(viewsets.ModelViewSet):

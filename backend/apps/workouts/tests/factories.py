@@ -43,6 +43,7 @@ class SetLogFactory(DjangoModelFactory):
     weight_kg = "80.00"
     reps = 8
     rpe = "7.5"
+    notes = ""
 
 
 class TemplateExerciseFactory(DjangoModelFactory):
