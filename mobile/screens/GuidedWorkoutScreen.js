@@ -179,8 +179,10 @@ const GuidedWorkoutScreen = ({ navigation, route }) => {
     exercises.forEach((ex) => {
       const sets = setsByExercise[ex.id] ?? [];
       if (sets.length === 0) return;
-      if (!groupedByExercise[ex.exercise]) groupedByExercise[ex.exercise] = [];
-      groupedByExercise[ex.exercise].push(...sets);
+      const exerciseId = ex.exercise_detail?.id;
+      if (!exerciseId) return;
+      if (!groupedByExercise[exerciseId]) groupedByExercise[exerciseId] = [];
+      groupedByExercise[exerciseId].push(...sets);
     });
 
     const allSets = Object.entries(groupedByExercise).flatMap(([exerciseId, sets]) =>

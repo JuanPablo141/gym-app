@@ -3,13 +3,16 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-nat
 import Button from "../components/Button";
 import Card from "../components/Card";
 import HistorySessionItem from "../components/HistorySessionItem";
+import LoadProgressChart from "../components/LoadProgressChart";
 import ProgressionSummary from "../components/ProgressionSummary";
 import QueryState from "../components/QueryState";
+import VolumeProgressChart from "../components/VolumeProgressChart";
 import { MUSCLE_GROUP_LABELS } from "../src/services/constants";
 import {
   useExerciseDetail,
   useExerciseHistory,
   useExerciseProgression,
+  useExerciseVolumeTrend,
 } from "../src/services/hooks";
 import { colors, spacing } from "../src/services/theme";
 
@@ -18,6 +21,7 @@ const DetailScreen = ({ navigation, route }) => {
 
   const detail = useExerciseDetail(exerciseId);
   const progression = useExerciseProgression(exerciseId);
+  const volumeTrend = useExerciseVolumeTrend(exerciseId);
   const history = useExerciseHistory(exerciseId);
 
   useEffect(() => {
@@ -70,6 +74,18 @@ const DetailScreen = ({ navigation, route }) => {
       ) : (
         <ProgressionSummary progression={progression.data} />
       )}
+
+      <Text style={styles.sectionTitle}>Evolução da Carga</Text>
+      <LoadProgressChart
+        trend={progression.data?.trend}
+        isLoading={progression.isLoading}
+      />
+
+      <Text style={styles.sectionTitle}>Evolução do Volume</Text>
+      <VolumeProgressChart
+        data={volumeTrend.data}
+        isLoading={volumeTrend.isLoading}
+      />
 
       <Text style={styles.sectionTitle}>Histórico</Text>
       {history.isLoading && (

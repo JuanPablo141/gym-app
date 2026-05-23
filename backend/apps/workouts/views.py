@@ -10,8 +10,11 @@ from .serializers import (
     WorkoutSessionSerializer,
     SessionSummaryResponseSerializer,
     ScheduledWorkoutSerializer,
+    ActivityStatsResponseSerializer,
 )
-from .services import compute_session_summary
+from .services import compute_session_summary, compute_activity_stats
+
+ACTIVITY_STATS_ALLOWED_DAYS = {7, 30, 90, 180, 365}
 
 
 class WorkoutTemplateViewSet(viewsets.ModelViewSet):
@@ -62,6 +65,27 @@ class WorkoutSessionViewSet(viewsets.ModelViewSet):
         session = self.get_object()
         payload = compute_session_summary(session)
         serializer = SessionSummaryResponseSerializer(payload)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"], url_path="activity-stats", url_name="activity-stats")
+    def activity_stats(self, request: Request) -> Response:
+        """
+        GET /api/workouts/sessions/activity-stats/?days=30
+
+        Returns the authenticated user's workout activity over the last N
+        days. Granularity (day/week/month) is picked automatically: ≤30d
+        per day, ≤180d per week, otherwise per month. Allowed values for
+        `days`: 7, 30, 90, 180, 365.
+        """
+        try:
+            days = int(request.query_params.get("days", 30))
+        except (TypeError, ValueError):
+            days = 30
+        if days not in ACTIVITY_STATS_ALLOWED_DAYS:
+            days = 30
+
+        payload = compute_activity_stats(request.user, days)
+        serializer = ActivityStatsResponseSerializer(payload)
         return Response(serializer.data)
 
 

@@ -271,6 +271,44 @@ class SessionSummaryResponseSerializer(serializers.Serializer):
     new_prs_count = serializers.IntegerField()
 
 
+class VolumeTrendPointSerializer(serializers.Serializer):
+    date = serializers.DateTimeField()
+    session_id = serializers.UUIDField()
+    volume_kg = serializers.DecimalField(max_digits=12, decimal_places=2)
+    top_weight_kg = serializers.DecimalField(
+        max_digits=6, decimal_places=2, allow_null=True
+    )
+    sets_count = serializers.IntegerField()
+
+
+class VolumeTrendResponseSerializer(serializers.Serializer):
+    exercise_id = serializers.UUIDField()
+    points = VolumeTrendPointSerializer(many=True)
+
+
+class ActivityBucketSerializer(serializers.Serializer):
+    bucket_start = serializers.DateField()
+    session_count = serializers.IntegerField()
+    total_volume_kg = serializers.DecimalField(max_digits=14, decimal_places=2)
+
+
+class ActivityTemplateBreakdownSerializer(serializers.Serializer):
+    template_id = serializers.UUIDField(allow_null=True)
+    template_name = serializers.CharField(allow_null=True)
+    session_count = serializers.IntegerField()
+
+
+class ActivityStatsResponseSerializer(serializers.Serializer):
+    days = serializers.IntegerField()
+    granularity = serializers.ChoiceField(choices=["day", "week", "month"])
+    total_sessions = serializers.IntegerField()
+    total_volume_kg = serializers.DecimalField(max_digits=14, decimal_places=2)
+    avg_sessions_per_week = serializers.FloatField()
+    longest_streak_weeks = serializers.IntegerField()
+    buckets = ActivityBucketSerializer(many=True)
+    templates_breakdown = ActivityTemplateBreakdownSerializer(many=True)
+
+
 class ScheduledWorkoutSerializer(serializers.ModelSerializer):
     template_detail = WorkoutTemplateSerializer(source="template", read_only=True)
     template = serializers.UUIDField(write_only=True)

@@ -67,6 +67,24 @@ export const useExerciseProgression = (id) => {
   }, [id]);
 };
 
+export const useExerciseVolumeTrend = (id, sessions = 10) => {
+  return useFetch(async () => {
+    const response = await api.get(
+      `/exercises/${id}/volume-trend/?sessions=${sessions}`
+    );
+    return response.data;
+  }, [id, sessions]);
+};
+
+export const useActivityStats = (days = 30) => {
+  return useFetch(async () => {
+    const response = await api.get(
+      `/workouts/sessions/activity-stats/?days=${days}`
+    );
+    return response.data;
+  }, [days]);
+};
+
 export const useProgressPhotos = () => {
   return useFetch(async () => fetchAll(`/users/me/progress-photos/`), []);
 };

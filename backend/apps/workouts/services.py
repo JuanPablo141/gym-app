@@ -1,7 +1,10 @@
 from __future__ import annotations
+from datetime import timedelta
 from decimal import Decimal
 from typing import Any
-from django.db.models import Max
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, Max, Prefetch, Sum
+from django.db.models.functions import TruncDay, TruncMonth, TruncWeek
+from django.utils import timezone
 from .models import SetLog, WorkoutSession
 
 WEIGHT_INCREMENT_KG = Decimal("2.5")
@@ -148,4 +151,204 @@ def compute_session_summary(session: WorkoutSession) -> dict[str, Any]:
         "exercises": exercises_out,
         "muscle_groups_trained": sorted(muscle_groups),
         "new_prs_count": new_prs_count,
+    }
+
+
+def compute_volume_trend(user, exercise, limit: int) -> dict[str, Any]:
+    """
+    Returns the user's last N sessions that included `exercise`, with volume
+    (sum of weight_kg × reps) and top weight per session. Points are ordered
+    chronologically (oldest first) so the mobile chart renders left-to-right.
+    """
+    sessions = list(
+        WorkoutSession.objects.filter(user=user, set_logs__exercise=exercise)
+        .distinct()
+        .order_by("-started_at")
+        .prefetch_related(
+            Prefetch(
+                "set_logs",
+                queryset=SetLog.objects.filter(exercise=exercise).order_by("set_number"),
+                to_attr="exercise_sets",
+            )
+        )[:limit]
+    )
+
+    points: list[dict[str, Any]] = []
+    for session in sessions:
+        sets: list[SetLog] = session.exercise_sets  # type: ignore[attr-defined]
+        volume = sum(
+            (s.weight_kg * s.reps for s in sets if s.weight_kg is not None),
+            Decimal("0"),
+        )
+        top = max(
+            sets,
+            key=lambda s: (s.weight_kg or Decimal("0"), s.reps),
+            default=None,
+        )
+        points.append({
+            "date": session.started_at,
+            "session_id": session.id,
+            "volume_kg": volume,
+            "top_weight_kg": top.weight_kg if top else None,
+            "sets_count": len(sets),
+        })
+
+    points.reverse()  # mais antigo → mais recente
+
+    return {"exercise_id": exercise.id, "points": points}
+
+
+def _longest_streak_weeks(user) -> int:
+    """
+    Returns the longest run of consecutive ISO weeks (Monday-starting) in
+    which the user logged at least one workout session. Considers the user's
+    entire history.
+    """
+    timestamps = list(
+        WorkoutSession.objects.filter(user=user).values_list("started_at", flat=True)
+    )
+    if not timestamps:
+        return 0
+
+    weeks_with_workout: set = set()
+    for ts in timestamps:
+        local = timezone.localtime(ts)
+        monday = (local - timedelta(days=local.weekday())).date()
+        weeks_with_workout.add(monday)
+
+    sorted_weeks = sorted(weeks_with_workout)
+    longest = current = 1
+    for i in range(1, len(sorted_weeks)):
+        if (sorted_weeks[i] - sorted_weeks[i - 1]).days == 7:
+            current += 1
+            longest = max(longest, current)
+        else:
+            current = 1
+    return longest
+
+
+def compute_activity_stats(user, days: int) -> dict[str, Any]:
+    """
+    Aggregates the user's workout activity over the last `days` days. Picks
+    bucket granularity (day/week/month) adaptively based on the period so the
+    chart stays readable. Returns summary metrics plus per-bucket counts and
+    volume.
+    """
+    now_local = timezone.localtime()
+    today = now_local.date()
+    cutoff_date = today - timedelta(days=days - 1)
+    cutoff_dt = now_local.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(
+        days=days - 1
+    )
+
+    sessions_qs = WorkoutSession.objects.filter(user=user, started_at__gte=cutoff_dt)
+    total_sessions = sessions_qs.count()
+
+    total_volume = (
+        SetLog.objects.filter(
+            session__user=user,
+            session__started_at__gte=cutoff_dt,
+            weight_kg__isnull=False,
+        ).aggregate(
+            total=Sum(
+                ExpressionWrapper(
+                    F("weight_kg") * F("reps"),
+                    output_field=DecimalField(max_digits=14, decimal_places=2),
+                )
+            )
+        )["total"]
+        or Decimal("0")
+    )
+
+    avg_sessions_per_week = round(total_sessions / (days / 7), 1) if days > 0 else 0.0
+
+    if days <= 30:
+        granularity = "day"
+        trunc, sql_trunc = TruncDay, TruncDay
+        step = timedelta(days=1)
+        bucket_count = days
+        first_bucket = cutoff_date
+    elif days <= 180:
+        granularity = "week"
+        trunc, sql_trunc = TruncWeek, TruncWeek
+        step = timedelta(weeks=1)
+        this_monday = today - timedelta(days=today.weekday())
+        first_monday = this_monday - timedelta(weeks=(days - 1) // 7)
+        first_bucket = first_monday
+        bucket_count = ((this_monday - first_monday).days // 7) + 1
+    else:
+        granularity = "month"
+        trunc, sql_trunc = TruncMonth, TruncMonth
+        step = None  # months têm tamanho variável; gerado manualmente
+        first_bucket = cutoff_date.replace(day=1)
+        bucket_count = (today.year - first_bucket.year) * 12 + (today.month - first_bucket.month) + 1
+
+    counts_rows = (
+        sessions_qs
+        .annotate(bucket=sql_trunc("started_at"))
+        .values("bucket")
+        .annotate(session_count=Count("id"))
+    )
+    counts_map = {row["bucket"].date(): row["session_count"] for row in counts_rows}
+
+    volume_rows = (
+        SetLog.objects.filter(
+            session__user=user,
+            session__started_at__gte=cutoff_dt,
+            weight_kg__isnull=False,
+        )
+        .annotate(bucket=sql_trunc("session__started_at"))
+        .values("bucket")
+        .annotate(
+            volume=Sum(
+                ExpressionWrapper(
+                    F("weight_kg") * F("reps"),
+                    output_field=DecimalField(max_digits=14, decimal_places=2),
+                )
+            )
+        )
+    )
+    volume_map = {row["bucket"].date(): (row["volume"] or Decimal("0")) for row in volume_rows}
+
+    buckets: list[dict[str, Any]] = []
+    cursor = first_bucket
+    for _ in range(bucket_count):
+        buckets.append({
+            "bucket_start": cursor,
+            "session_count": counts_map.get(cursor, 0),
+            "total_volume_kg": volume_map.get(cursor, Decimal("0")),
+        })
+        if granularity == "month":
+            year, month = cursor.year, cursor.month
+            if month == 12:
+                cursor = cursor.replace(year=year + 1, month=1)
+            else:
+                cursor = cursor.replace(month=month + 1)
+        else:
+            cursor = cursor + step
+
+    templates_rows = (
+        sessions_qs
+        .values("template_id", "template__name")
+        .annotate(session_count=Count("id"))
+        .order_by("-session_count")
+    )
+    templates_breakdown = [
+        {
+            "template_id": row["template_id"],
+            "template_name": row["template__name"],
+            "session_count": row["session_count"],
+        }
+        for row in templates_rows
+    ]
+
+    return {
+        "days": days,
+        "granularity": granularity,
+        "total_sessions": total_sessions,
+        "total_volume_kg": total_volume,
+        "avg_sessions_per_week": avg_sessions_per_week,
+        "longest_streak_weeks": _longest_streak_weeks(user),
+        "buckets": buckets,
+        "templates_breakdown": templates_breakdown,
     }
