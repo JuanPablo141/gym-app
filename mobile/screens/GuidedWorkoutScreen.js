@@ -192,6 +192,7 @@ const GuidedWorkoutScreen = ({ navigation, route }) => {
         weight_kg: s.weight_kg,
         reps: s.reps,
         rpe: s.rpe,
+        notes: s.notes ?? "",
       }))
     );
 

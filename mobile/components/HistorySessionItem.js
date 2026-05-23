@@ -18,11 +18,16 @@ const HistorySessionItem = ({ session }) => {
           <Text style={[styles.cell, styles.cellHeader]}>RPE</Text>
         </View>
         {session.sets.map((s, idx) => (
-          <View key={idx} style={styles.setRow}>
-            <Text style={styles.cell}>{s.set_number}</Text>
-            <Text style={styles.cell}>{s.weight_kg ?? "—"}</Text>
-            <Text style={styles.cell}>{s.reps}</Text>
-            <Text style={styles.cell}>{s.rpe ?? "—"}</Text>
+          <View key={idx}>
+            <View style={styles.setRow}>
+              <Text style={styles.cell}>{s.set_number}</Text>
+              <Text style={styles.cell}>{s.weight_kg ?? "—"}</Text>
+              <Text style={styles.cell}>{s.reps}</Text>
+              <Text style={styles.cell}>{s.rpe ?? "—"}</Text>
+            </View>
+            {s.notes ? (
+              <Text style={styles.noteRow}>{s.notes}</Text>
+            ) : null}
           </View>
         ))}
       </View>
@@ -65,6 +70,13 @@ const styles = StyleSheet.create({
     color: colors.textSubtle,
     fontWeight: "700",
     textTransform: "uppercase",
+  },
+  noteRow: {
+    fontSize: 12,
+    fontStyle: "italic",
+    color: colors.textSubtle,
+    paddingLeft: spacing.sm,
+    paddingBottom: 6,
   },
 });
 

@@ -20,3 +20,12 @@ export const DAY_NAMES = [
   "Sábado",
   "Domingo",
 ];
+
+export const formatDuration = (minutes) => {
+  if (minutes == null) return "—";
+  const m = Math.round(minutes);
+  if (m < 60) return `${m}min`;
+  const h = Math.floor(m / 60);
+  const rest = m % 60;
+  return rest === 0 ? `${h}h` : `${h}h ${rest}min`;
+};
