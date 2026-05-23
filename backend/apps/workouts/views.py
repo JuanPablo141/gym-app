@@ -11,10 +11,16 @@ from .serializers import (
     SessionSummaryResponseSerializer,
     ScheduledWorkoutSerializer,
     ActivityStatsResponseSerializer,
+    HeatmapResponseSerializer,
 )
-from .services import compute_session_summary, compute_activity_stats
+from .services import (
+    compute_session_summary,
+    compute_activity_stats,
+    compute_workout_heatmap,
+)
 
 ACTIVITY_STATS_ALLOWED_DAYS = {7, 30, 90, 180, 365}
+HEATMAP_ALLOWED_DAYS = {90, 180, 365}
 
 
 class WorkoutTemplateViewSet(viewsets.ModelViewSet):
@@ -86,6 +92,26 @@ class WorkoutSessionViewSet(viewsets.ModelViewSet):
 
         payload = compute_activity_stats(request.user, days)
         serializer = ActivityStatsResponseSerializer(payload)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"], url_path="heatmap", url_name="heatmap")
+    def heatmap(self, request: Request) -> Response:
+        """
+        GET /api/workouts/sessions/heatmap/?days=365
+
+        Returns one cell per day for the last N days (90/180/365) with the
+        session count, so the mobile client can render a GitHub-style
+        contribution heatmap. Days with no workout are filled with 0.
+        """
+        try:
+            days = int(request.query_params.get("days", 365))
+        except (TypeError, ValueError):
+            days = 365
+        if days not in HEATMAP_ALLOWED_DAYS:
+            days = 365
+
+        payload = compute_workout_heatmap(request.user, days)
+        serializer = HeatmapResponseSerializer(payload)
         return Response(serializer.data)
 
 

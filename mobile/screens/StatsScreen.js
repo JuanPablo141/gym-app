@@ -5,7 +5,8 @@ import ActivityBarChart from "../components/ActivityBarChart";
 import PeriodSelector from "../components/PeriodSelector";
 import StatCard from "../components/StatCard";
 import TemplateBreakdown from "../components/TemplateBreakdown";
-import { useActivityStats } from "../src/services/hooks";
+import WorkoutHeatmap from "../components/WorkoutHeatmap";
+import { useActivityStats, useWorkoutHeatmap } from "../src/services/hooks";
 import { colors, spacing } from "../src/services/theme";
 
 const PERIOD_OPTIONS = [
@@ -25,10 +26,12 @@ const formatVolume = (kg) => {
 const StatsScreen = () => {
   const [days, setDays] = useState(30);
   const stats = useActivityStats(days);
+  const heatmap = useWorkoutHeatmap(365);
 
   useFocusEffect(
     useCallback(() => {
       stats.refetch();
+      heatmap.refetch();
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
   );
 
@@ -90,6 +93,9 @@ const StatsScreen = () => {
         breakdown={data?.templates_breakdown}
         totalSessions={data?.total_sessions}
       />
+
+      <Text style={styles.sectionTitle}>Atividade no ano</Text>
+      <WorkoutHeatmap data={heatmap.data} isLoading={heatmap.isLoading} />
     </ScrollView>
   );
 };

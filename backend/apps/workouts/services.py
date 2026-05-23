@@ -227,6 +227,49 @@ def _longest_streak_weeks(user) -> int:
     return longest
 
 
+def compute_workout_heatmap(user, days: int) -> dict[str, Any]:
+    """
+    Returns one cell per day for the last `days` days (inclusive of today).
+    Each cell has the date and the number of sessions logged that day,
+    filling missing days with 0 so the client receives a fixed-size grid.
+    """
+    now_local = timezone.localtime()
+    today = now_local.date()
+    start_date = today - timedelta(days=days - 1)
+    cutoff_dt = now_local.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(
+        days=days - 1
+    )
+
+    counts_rows = (
+        WorkoutSession.objects.filter(user=user, started_at__gte=cutoff_dt)
+        .annotate(day=TruncDay("started_at"))
+        .values("day")
+        .annotate(session_count=Count("id"))
+    )
+    counts_map = {row["day"].date(): row["session_count"] for row in counts_rows}
+
+    cells: list[dict[str, Any]] = []
+    max_sessions = 0
+    days_with_workout = 0
+    for offset in range(days):
+        d = start_date + timedelta(days=offset)
+        count = counts_map.get(d, 0)
+        cells.append({"date": d, "session_count": count})
+        if count > 0:
+            days_with_workout += 1
+            if count > max_sessions:
+                max_sessions = count
+
+    return {
+        "days": days,
+        "start_date": start_date,
+        "end_date": today,
+        "max_sessions_in_day": max_sessions,
+        "days_with_workout": days_with_workout,
+        "cells": cells,
+    }
+
+
 def compute_activity_stats(user, days: int) -> dict[str, Any]:
     """
     Aggregates the user's workout activity over the last `days` days. Picks

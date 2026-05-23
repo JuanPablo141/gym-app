@@ -85,6 +85,15 @@ export const useActivityStats = (days = 30) => {
   }, [days]);
 };
 
+export const useWorkoutHeatmap = (days = 365) => {
+  return useFetch(async () => {
+    const response = await api.get(
+      `/workouts/sessions/heatmap/?days=${days}`
+    );
+    return response.data;
+  }, [days]);
+};
+
 export const useProgressPhotos = () => {
   return useFetch(async () => fetchAll(`/users/me/progress-photos/`), []);
 };

@@ -309,6 +309,20 @@ class ActivityStatsResponseSerializer(serializers.Serializer):
     templates_breakdown = ActivityTemplateBreakdownSerializer(many=True)
 
 
+class HeatmapCellSerializer(serializers.Serializer):
+    date = serializers.DateField()
+    session_count = serializers.IntegerField()
+
+
+class HeatmapResponseSerializer(serializers.Serializer):
+    days = serializers.IntegerField()
+    start_date = serializers.DateField()
+    end_date = serializers.DateField()
+    max_sessions_in_day = serializers.IntegerField()
+    days_with_workout = serializers.IntegerField()
+    cells = HeatmapCellSerializer(many=True)
+
+
 class ScheduledWorkoutSerializer(serializers.ModelSerializer):
     template_detail = WorkoutTemplateSerializer(source="template", read_only=True)
     template = serializers.UUIDField(write_only=True)
