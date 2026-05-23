@@ -253,6 +253,68 @@ def test_activity_stats_streak_counts_consecutive_weeks(authed_client, user):
     assert response.data["longest_streak_weeks"] == 3
 
 
+# ---------------------------------------------------------------------------
+# Heatmap endpoint
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_heatmap_returns_one_cell_per_day(authed_client):
+    response = authed_client.get(
+        reverse("workout-session-heatmap"), {"days": 365}
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["days"] == 365
+    assert len(response.data["cells"]) == 365
+
+
+@pytest.mark.django_db
+def test_heatmap_counts_sessions_per_day(authed_client, user):
+    bench = ExerciseFactory()
+    now = timezone.localtime()
+    # Duas sessões hoje
+    for _ in range(2):
+        s = WorkoutSessionFactory(user=user, started_at=now - timedelta(hours=1))
+        SetLogFactory(session=s, exercise=bench)
+
+    response = authed_client.get(
+        reverse("workout-session-heatmap"), {"days": 90}
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["max_sessions_in_day"] >= 2
+    assert response.data["days_with_workout"] >= 1
+    today = timezone.localtime().date()
+    today_cell = response.data["cells"][-1]
+    assert today_cell["date"] == today.isoformat()
+    assert today_cell["session_count"] == 2
+
+
+@pytest.mark.django_db
+def test_heatmap_isolated_by_user(authed_client, other_user):
+    now = timezone.localtime()
+    WorkoutSessionFactory(user=other_user, started_at=now - timedelta(hours=1))
+
+    response = authed_client.get(
+        reverse("workout-session-heatmap"), {"days": 90}
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["days_with_workout"] == 0
+    assert response.data["max_sessions_in_day"] == 0
+
+
+@pytest.mark.django_db
+def test_heatmap_rejects_invalid_days_and_uses_default(authed_client):
+    response = authed_client.get(
+        reverse("workout-session-heatmap"), {"days": 42}
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["days"] == 365
+
+
 @pytest.mark.django_db
 def test_filter_scheduled_workouts_by_day(authed_client, user):
     t1 = WorkoutTemplateFactory(user=user)
