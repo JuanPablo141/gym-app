@@ -105,7 +105,7 @@ Divididos por propósito:
 | `Button.js` | Botão customizado com `variant` (primary/secondary), `loading`, `disabled` |
 | `QueryState.js` | Wrapper que renderiza loading/erro/empty conforme props |
 | `Stepper.js` | Input numérico com chevrons +/− e long-press auto-repeat |
-| `RestTimer.js` | Modal com countdown, vibração ao fim, botões ±15s |
+| `RestTimer.js` | Modal com countdown, som + vibração em pattern + notificação local ao fim, botões ±15s |
 | `WorkoutProgressBar.js` | Barra fina mostrando progresso N/total |
 
 ### Específicos de domínio
@@ -327,7 +327,7 @@ PRE_WORKOUT ─→ Confirmar "Iniciar Treino"
 - **PRE_WORKOUT** — renderiza `WorkoutStartCard` com preview do treino, exercícios, tempo estimado. `startedAtRef` só é preenchido aqui.
 - **LOGGING** — `InlineSetForm` com `Stepper`s pré-populados (sticky weight da série anterior, reps do `target_reps`).
 - **CARDIO** — `RouteTracker` em vez de form (quando `muscle_group === "cardio"`).
-- **RESTING** — `RestTimer` modal com countdown auto-iniciado, ±15s, vibração ao fim.
+- **RESTING** — `RestTimer` modal com countdown auto-iniciado, ±15s e feedback multi-camada ao fim: vibração em pattern + som via `expo-audio` (foreground) + notificação local agendada via `expo-notifications` (cobre app em background). A notificação em background tem suporte limitado no Expo Go por design do SDK 53+; pra fidelidade total, usar um EAS dev build.
 - **EXERCISE_DONE** — `ExerciseCompleteCard` com resumo das séries + opções "Próximo →" e "+ Série extra".
 - **BETWEEN_EXERCISES** — `ExerciseStartCard` com preview do próximo exercício + botão "Começar".
 
