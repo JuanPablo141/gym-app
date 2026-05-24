@@ -1,5 +1,7 @@
 # Gym App
 
+[![Backend tests](https://github.com/JuanPablo141/django-project/actions/workflows/backend-tests.yml/badge.svg)](https://github.com/JuanPablo141/django-project/actions/workflows/backend-tests.yml)
+
 > App de academia gratuito focado em **progressão de carga**, **templates de treino** e **acompanhamento de sessões**. Backend Django + mobile React Native/Expo.
 
 ---
@@ -231,7 +233,7 @@ Quer detalhes? Vai pros sub-READMEs:
 - Export CSV do histórico
 - Onboarding flow
 - Hospedagem em produção (Railway/DO) + HTTPS
-- CI (GitHub Actions) protegendo cobertura
+- ✅ CI (GitHub Actions) protegendo cobertura
 - Backup automático do banco
 
 ---
