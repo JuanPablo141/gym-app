@@ -1,7 +1,12 @@
-import { useEffect, useState } from "react";
-import { Modal, StyleSheet, Text, Vibration, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { Modal, StyleSheet, Text, View } from "react-native";
 import Button from "./Button";
 import Card from "./Card";
+import {
+  cancelRestEndNotification,
+  playRestEndFeedback,
+  scheduleRestEndNotification,
+} from "../src/services/restFeedback";
 import { colors, spacing } from "../src/services/theme";
 
 const formatMMSS = (totalSeconds) => {
@@ -19,6 +24,9 @@ const RestTimer = ({ visible, initialSeconds, onClose }) => {
     if (visible) {
       setSeconds(initialSeconds);
       setHasVibrated(false);
+      scheduleRestEndNotification(initialSeconds);
+    } else {
+      cancelRestEndNotification();
     }
   }, [visible, initialSeconds]);
 
@@ -30,19 +38,33 @@ const RestTimer = ({ visible, initialSeconds, onClose }) => {
 
   useEffect(() => {
     if (visible && seconds === 0 && !hasVibrated) {
-      try {
-        Vibration.vibrate(400);
-      } catch {
-        // alguns ambientes (ex: web) não suportam — silenciar
-      }
       setHasVibrated(true);
+      playRestEndFeedback();
+      cancelRestEndNotification();
     }
   }, [visible, seconds, hasVibrated]);
+
+  const adjustSeconds = useCallback((delta) => {
+    setSeconds((current) => {
+      const next = Math.max(0, current + delta);
+      if (next === 0) {
+        cancelRestEndNotification();
+      } else {
+        scheduleRestEndNotification(next);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleClose = useCallback(() => {
+    cancelRestEndNotification();
+    onClose();
+  }, [onClose]);
 
   if (!visible) return null;
 
   return (
-    <Modal transparent animationType="fade" visible={visible} onRequestClose={onClose}>
+    <Modal transparent animationType="fade" visible={visible} onRequestClose={handleClose}>
       <View style={styles.overlay}>
         <Card style={styles.card}>
           <Text style={styles.label}>Descanso</Text>
@@ -53,20 +75,20 @@ const RestTimer = ({ visible, initialSeconds, onClose }) => {
             <View style={styles.buttonWrap}>
               <Button
                 title="−15s"
-                onPress={() => setSeconds((s) => Math.max(0, s - 15))}
+                onPress={() => adjustSeconds(-15)}
                 variant="secondary"
               />
             </View>
             <View style={styles.buttonWrap}>
               <Button
                 title="+15s"
-                onPress={() => setSeconds((s) => s + 15)}
+                onPress={() => adjustSeconds(15)}
                 variant="secondary"
               />
             </View>
           </View>
           <View style={styles.skipWrapper}>
-            <Button title={seconds === 0 ? "Continuar" : "Pular"} onPress={onClose} />
+            <Button title={seconds === 0 ? "Continuar" : "Pular"} onPress={handleClose} />
           </View>
         </Card>
       </View>

@@ -27,7 +27,15 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#1f6feb"
+        }
+      ],
+      "expo-audio"
     ]
   }
 }

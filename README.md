@@ -60,7 +60,7 @@ Este repositório abriga um app de academia com **duplo propósito**:
 - ✅ Fluxo state-machine: preview → série → descanso → próximo
 - ✅ Pré-popula peso com a última série do mesmo exercício
 - ✅ Inputs com Stepper (botões + long-press para acelerar)
-- ✅ Timer de descanso com vibração ao fim
+- ✅ Timer de descanso com som, vibração em pattern e notificação ao fim
 - ✅ Transição entre exercícios com preview do próximo
 - ✅ Detecção automática de novos PRs
 
@@ -224,7 +224,7 @@ Quer detalhes? Vai pros sub-READMEs:
 - Modo escuro
 - IMC e medidas corporais
 - Notas por série
-- Melhorias no rest timer (som, notificação background)
+- ✅ Melhorias no rest timer (som, notificação background)¹
 
 ### Backlog
 
@@ -235,6 +235,8 @@ Quer detalhes? Vai pros sub-READMEs:
 - Hospedagem em produção (Railway/DO) + HTTPS
 - ✅ CI (GitHub Actions) protegendo cobertura
 - Backup automático do banco
+
+> ¹ A notificação local quando o app está em background depende de funcionalidades do `expo-notifications` que o **Expo Go removeu a partir do SDK 53**. Em foreground (som + vibração) funciona normalmente; com tela bloqueada, a notificação pode não disparar. Pra suporte completo em produção, basta gerar um [development build via EAS](https://docs.expo.dev/develop/development-builds/introduction/) — o código já está pronto pra isso, sem mudanças adicionais.
 
 ---
 
