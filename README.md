@@ -91,13 +91,12 @@ Detalhes completos em [backend/README.md](backend/README.md) e [mobile/README.md
 
 ## Screenshots
 
-<!-- TODO: adicionar prints aqui quando o visual estiver finalizado -->
-
-Sugestões de telas pra documentar:
-- Home com "Treino de hoje" + agenda semanal
-- Editor de template com drag-and-drop
-- Fluxo guiado mostrando série atual + timer de descanso
-- Tela de perfil com galeria de fotos de progresso
+<p align="center">
+  <img src="screenshots/screen1.jpeg" width="22%" />
+  <img src="screenshots/screen2.jpeg" width="22%" />
+  <img src="screenshots/screen3.jpeg" width="22%" />
+  <img src="screenshots/screen4.jpeg" width="22%" />
+</p>
 
 ---
 
